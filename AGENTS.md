@@ -26,6 +26,7 @@ Keep new files in these folders unless there is a strong reason to introduce a n
 
 - Slash command files live in `commands/` and follow the official rule `/<command-name>` where `<command-name>` is derived from the Markdown filename (without `.md`), e.g. `council.md` → `/llm-council-plugin:council`.
 - You can still present a shorter user-facing form like `/council` in the command body, but the namespaced form (`/plugin-name:<command-name>`) always comes from the filename, so choose filenames accordingly.
+- When a command accepts arguments, add an `argument-hint` in the frontmatter that matches how users invoke it (e.g. `<question>` or `[set <key> <value> | reset]`) and explicitly wire that into the prompt using `$ARGUMENTS` (all args) or `$1`, `$2`, `$3`, etc. for structured subcommands.
 
 ## Build, Test, and Development Commands
 
@@ -38,7 +39,7 @@ There is no separate build step; this repository is loaded directly by Claude Co
 
 - Shell scripts: `bash`, `set -euo pipefail`, 2‑space indentation, functions in `snake_case`, environment variables in `UPPER_SNAKE_CASE`.
 - Markdown: start with a single H1, use `##`/`###` for structure, fenced code blocks with language tags (`bash`, `json`, etc.).
-- Paths in manifests: always relative and starting with `./` (e.g. `"./commands/summon-council.md"`).
+- Paths in manifests: always relative and starting with `./` (e.g. `"./commands/council.md"`).
 
 Prefer small, composable scripts over large monoliths. Avoid one‑letter variable names in new code.
 
