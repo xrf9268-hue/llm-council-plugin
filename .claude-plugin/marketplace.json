@@ -1,0 +1,140 @@
+{
+  "name": "LLM Council",
+  "slug": "llm-council",
+  "version": "1.0.0",
+  "description": "Multi-model consensus engine that summons OpenAI Codex, Google Gemini, and Claude to collaboratively answer your technical questions through peer review and synthesis.",
+  "longDescription": "The LLM Council plugin transforms Claude Code into a multi-model deliberation system. When you have a complex technical question, instead of getting one perspective, you get three AI models working together:\n\n1. **Opinion Collection**: Your question is sent to Claude, OpenAI Codex, and Google Gemini in parallel\n2. **Peer Review**: Each model anonymously reviews the others' responses, identifying strengths and weaknesses\n3. **Chairman Synthesis**: Claude Opus synthesizes all inputs into a final verdict with consensus points and areas of disagreement\n\nPerfect for architecture decisions, code reviews, debugging complex issues, and any question where multiple perspectives add value.",
+  "author": {
+    "name": "LLM Council Contributors",
+    "url": "https://github.com/your-org/llm-council-plugin"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/llm-council-plugin.git"
+  },
+  "homepage": "https://github.com/your-org/llm-council-plugin",
+  "keywords": [
+    "multi-model",
+    "consensus",
+    "code-review",
+    "openai",
+    "gemini",
+    "claude",
+    "deliberation",
+    "peer-review",
+    "synthesis"
+  ],
+  "categories": [
+    "Code Review",
+    "Developer Tools",
+    "AI Integration"
+  ],
+  "features": [
+    "Multi-model parallel querying",
+    "Anonymous peer review system",
+    "Chairman synthesis with Claude Opus",
+    "Graceful degradation for missing CLIs",
+    "Progress indicators and status updates",
+    "Configurable quorum and timeout settings",
+    "Security hooks for input validation"
+  ],
+  "dependencies": {
+    "required": [
+      {
+        "name": "Claude CLI",
+        "command": "claude",
+        "url": "https://claude.ai/code"
+      }
+    ],
+    "optional": [
+      {
+        "name": "OpenAI Codex CLI",
+        "command": "codex",
+        "install": "npm install -g @openai/codex"
+      },
+      {
+        "name": "Google Gemini CLI",
+        "command": "gemini",
+        "install": "npm install -g @google/gemini-cli"
+      }
+    ]
+  },
+  "commands": [
+    {
+      "name": "/council",
+      "description": "Summon the LLM Council for multi-model deliberation",
+      "usage": "/council \"Your technical question here\""
+    },
+    {
+      "name": "/council-help",
+      "description": "Display usage information and examples"
+    },
+    {
+      "name": "/council-status",
+      "description": "Check CLI availability and configuration"
+    },
+    {
+      "name": "/council-config",
+      "description": "Manage council settings"
+    }
+  ],
+  "skills": [
+    {
+      "name": "council-orchestrator",
+      "description": "Orchestrates the multi-model deliberation protocol"
+    }
+  ],
+  "agents": [
+    {
+      "name": "council-chairman",
+      "description": "Synthesizes council outputs into a final verdict",
+      "model": "claude-opus-4.5"
+    }
+  ],
+  "screenshots": [
+    {
+      "path": "screenshots/council-in-action.png",
+      "caption": "LLM Council deliberating on a technical question"
+    },
+    {
+      "path": "screenshots/final-verdict.png",
+      "caption": "The Chairman's synthesized verdict"
+    }
+  ],
+  "examples": [
+    {
+      "title": "Architecture Decision",
+      "command": "/council \"Should I use microservices or a monolith for my new SaaS product?\""
+    },
+    {
+      "title": "Code Review",
+      "command": "/council \"Review this authentication implementation for security issues\""
+    },
+    {
+      "title": "Performance Optimization",
+      "command": "/council \"How can I optimize React component re-renders in my dashboard?\""
+    }
+  ],
+  "pricing": "free",
+  "support": {
+    "issues": "https://github.com/your-org/llm-council-plugin/issues",
+    "documentation": "https://github.com/your-org/llm-council-plugin#readme"
+  },
+  "changelog": {
+    "1.0.0": {
+      "date": "2025-11-26",
+      "changes": [
+        "Initial release",
+        "Three-stage deliberation protocol (Opinion, Review, Synthesis)",
+        "Parallel execution of CLI queries",
+        "Anonymous peer review system",
+        "Chairman synthesis with Claude Opus 4.5",
+        "Graceful degradation for missing CLIs",
+        "Configuration management",
+        "Progress indicators",
+        "Security hooks"
+      ]
+    }
+  }
+}
