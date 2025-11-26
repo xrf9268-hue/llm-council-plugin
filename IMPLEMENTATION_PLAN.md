@@ -118,25 +118,25 @@ llm-council-plugin/
 **Goal**: Implement cross-examination flow where each model reviews others' outputs.
 
 ### 4.1 Review Prompt Construction
-- [ ] Design anonymized review prompt template
-- [ ] Read Stage 1 outputs and inject into review prompts
-- [ ] Focus review criteria: accuracy, code quality, security
+- [x] Design anonymized review prompt template
+- [x] Read Stage 1 outputs and inject into review prompts
+- [x] Focus review criteria: accuracy, code quality, security, completeness, clarity
 
 ### 4.2 Cross-Review Execution
-- [ ] Codex reviews Gemini + Claude outputs
-- [ ] Gemini reviews Codex + Claude outputs
-- [ ] Claude reviews Codex + Gemini outputs
-- [ ] Save to `.council/stage2_review_*.txt`
+- [x] Codex reviews Gemini + Claude outputs
+- [x] Gemini reviews Codex + Claude outputs
+- [x] Claude reviews Codex + Gemini outputs
+- [x] Save to `.council/stage2_review_*.txt`
 
 ### 4.3 SKILL.md Updates
-- [ ] Add Stage 2 flow documentation
-- [ ] Define data transformation between stages
-- [ ] Implement error handling for partial failures
+- [x] Add Stage 2 flow documentation
+- [x] Define data transformation between stages
+- [x] Implement error handling for partial failures
 
 ### 4.4 Validation Criteria
-- Review prompts correctly include anonymized prior outputs
-- Stage 2 files contain substantive review content
-- Flow continues even if one reviewer fails
+- [x] Review prompts correctly include anonymized prior outputs
+- [x] Stage 2 files contain substantive review content
+- [x] Flow continues even if one reviewer fails
 
 ---
 
@@ -312,6 +312,9 @@ Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5
 - [x] `skills/council-orchestrator/scripts/query_gemini.sh`
 - [x] `skills/council-orchestrator/scripts/run_parallel.sh`
 
+### Phase 4 Files
+- [x] `skills/council-orchestrator/scripts/run_peer_review.sh`
+
 ### Phase 5 Files
 - [x] `agents/council-chairman.md` (created early in Phase 1)
 
@@ -372,12 +375,34 @@ Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5
   - Utility function integration
 - Successfully tested parallel execution with all 3 CLIs
 
+### Phase 4 - COMPLETED (2025-11-26)
+- Created `run_peer_review.sh` script with:
+  - Anonymized review prompt template (Response A, Response B)
+  - Cross-review matrix (each model reviews the other two)
+  - Parallel execution of all peer reviews
+  - Quorum check (requires at least 2 Stage 1 responses)
+  - Bash 3 compatibility (no associative arrays)
+  - Graceful degradation for missing CLIs
+- Updated SKILL.md with:
+  - Quick Start section for run_peer_review.sh
+  - Detailed review prompt template
+  - Cross-review matrix documentation
+  - Output file specifications
+- Review criteria include:
+  - Technical Accuracy
+  - Code Quality
+  - Security Considerations
+  - Completeness
+  - Clarity
+- Successfully tested peer review with all 3 CLIs
+
 ## Next Steps
 
 1. ~~Begin with Phase 1 to establish the plugin foundation~~ DONE
 2. ~~Proceed to Phase 2: Single CLI Integration (Claude-only)~~ DONE
 3. ~~Proceed to Phase 3: Multi-CLI Integration (Parallel Execution)~~ DONE
-4. Proceed to Phase 4: Peer Review Implementation (Stage 2)
-5. Validate each phase before proceeding to the next
-6. Use incremental commits for easy rollback if needed
-7. Test in isolation before integration
+4. ~~Proceed to Phase 4: Peer Review Implementation (Stage 2)~~ DONE
+5. Proceed to Phase 5: Chairman Sub-agent (Stage 3)
+6. Validate each phase before proceeding to the next
+7. Use incremental commits for easy rollback if needed
+8. Test in isolation before integration

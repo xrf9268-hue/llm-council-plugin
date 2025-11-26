@@ -126,83 +126,127 @@ If Claude CLI is missing, the council cannot proceed. For Codex and Gemini, if m
 
 ### Phase 2: Peer Review (Cross-Examination)
 
-1. **Read Stage 1 Outputs**: Load all available response files:
-   ```bash
-   CLAUDE_RESPONSE=""
-   CODEX_RESPONSE=""
-   GEMINI_RESPONSE=""
+**Quick Start**: Use the `run_peer_review.sh` script:
+```bash
+./skills/council-orchestrator/scripts/run_peer_review.sh "{original_question}" .council
+```
 
-   [[ -s ".council/stage1_claude.txt" ]] && CLAUDE_RESPONSE=$(cat .council/stage1_claude.txt)
-   [[ -s ".council/stage1_openai.txt" ]] && CODEX_RESPONSE=$(cat .council/stage1_openai.txt)
-   [[ -s ".council/stage1_gemini.txt" ]] && GEMINI_RESPONSE=$(cat .council/stage1_gemini.txt)
-   ```
+This script handles all peer review orchestration automatically. Below is the detailed flow for reference.
 
-2. **Construct Review Prompts**: For each model, create a prompt containing:
-   - The original user question
-   - Anonymized responses from the other available models (labeled "Response A", "Response B")
-   - Review criteria: accuracy, code quality, security, completeness
+#### 2.1 Read Stage 1 Outputs
 
-   Example review prompt template:
-   ```
-   You are reviewing responses to this question: "{original_question}"
+Load all available response files:
+```bash
+CLAUDE_RESPONSE=""
+CODEX_RESPONSE=""
+GEMINI_RESPONSE=""
 
-   Please evaluate the following responses:
+[[ -s ".council/stage1_claude.txt" ]] && CLAUDE_RESPONSE=$(cat .council/stage1_claude.txt)
+[[ -s ".council/stage1_openai.txt" ]] && CODEX_RESPONSE=$(cat .council/stage1_openai.txt)
+[[ -s ".council/stage1_gemini.txt" ]] && GEMINI_RESPONSE=$(cat .council/stage1_gemini.txt)
+```
 
-   --- Response A ---
-   {response_a}
+**Quorum Check**: At least 2 Stage 1 responses are required for meaningful peer review.
 
-   --- Response B ---
-   {response_b}
+#### 2.2 Construct Anonymized Review Prompts
 
-   Review each response for:
-   1. Technical accuracy
-   2. Code quality (if applicable)
-   3. Security considerations
-   4. Completeness
+For each reviewer, create a prompt containing:
+- The original user question
+- Anonymized responses from other models (labeled "Response A", "Response B")
+- Standardized review criteria
 
-   Provide a brief critique of each response, noting strengths and weaknesses.
-   ```
+**Review Prompt Template**:
+```
+You are a peer reviewer evaluating responses to a technical question.
 
-3. **Execute Reviews in Parallel**: Run each available CLI with their review prompts:
-   ```bash
-   progress_msg "Starting peer review phase..."
-   PIDS=()
+## Original Question
+{original_question}
 
-   # Claude reviews Codex + Gemini responses
-   if [[ "$CLAUDE_AVAILABLE" == "yes" && ( -n "$CODEX_RESPONSE" || -n "$GEMINI_RESPONSE" ) ]]; then
-       progress_msg "Claude reviewing peer responses..."
-       ./skills/council-orchestrator/scripts/query_claude.sh "{review_prompt_for_claude}" > .council/stage2_review_claude.txt 2>&1 &
-       PIDS+=($!)
-   fi
+## Responses to Review
 
-   # Codex reviews Claude + Gemini responses
-   if [[ "$CODEX_AVAILABLE" == "yes" && ( -n "$CLAUDE_RESPONSE" || -n "$GEMINI_RESPONSE" ) ]]; then
-       progress_msg "Codex reviewing peer responses..."
-       ./skills/council-orchestrator/scripts/query_codex.sh "{review_prompt_for_codex}" > .council/stage2_review_openai.txt 2>&1 &
-       PIDS+=($!)
-   fi
+--- Response A ---
+{response_a}
 
-   # Gemini reviews Claude + Codex responses
-   if [[ "$GEMINI_AVAILABLE" == "yes" && ( -n "$CLAUDE_RESPONSE" || -n "$CODEX_RESPONSE" ) ]]; then
-       progress_msg "Gemini reviewing peer responses..."
-       ./skills/council-orchestrator/scripts/query_gemini.sh "{review_prompt_for_gemini}" > .council/stage2_review_gemini.txt 2>&1 &
-       PIDS+=($!)
-   fi
+--- Response B ---
+{response_b}
 
-   # Wait for all reviews to complete
-   for pid in "${PIDS[@]}"; do
-       wait "$pid" || true
-   done
+## Review Instructions
 
-   progress_msg "Peer review phase complete."
-   ```
+Please evaluate each response for:
 
-4. **Validate Review Outputs**: Ensure reviews were captured:
-   ```bash
-   validate_output ".council/stage2_review_claude.txt" "Claude Review" || true
-   validate_output ".council/stage2_review_openai.txt" "Codex Review" || true
-   validate_output ".council/stage2_review_gemini.txt" "Gemini Review" || true
-   ```
+1. **Technical Accuracy**: Are the facts, code, and explanations correct?
+2. **Code Quality** (if applicable): Is the code well-structured, readable, and following best practices?
+3. **Security Considerations**: Are there any security issues or vulnerabilities?
+4. **Completeness**: Does the response fully address the question?
+5. **Clarity**: Is the explanation clear and easy to understand?
+
+For each response, provide:
+- A brief summary of strengths
+- Any weaknesses or errors identified
+- An overall assessment (Strong/Adequate/Weak)
+
+Be objective and constructive in your critique.
+```
+
+**Cross-Review Matrix**:
+| Reviewer | Reviews |
+|----------|---------|
+| Claude   | Codex (A) + Gemini (B) |
+| Codex    | Claude (A) + Gemini (B) |
+| Gemini   | Claude (A) + Codex (B) |
+
+#### 2.3 Execute Reviews in Parallel
+
+Run each available CLI with their review prompts:
+```bash
+progress_msg "Starting peer review phase..."
+PIDS=""
+
+# Claude reviews Codex + Gemini responses
+if [[ "$CLAUDE_AVAILABLE" == "yes" && ( -n "$CODEX_RESPONSE" || -n "$GEMINI_RESPONSE" ) ]]; then
+    progress_msg "Claude reviewing peer responses..."
+    ./skills/council-orchestrator/scripts/query_claude.sh "{review_prompt}" > .council/stage2_review_claude.txt 2>&1 &
+    PID_CLAUDE=$!
+    PIDS="$PIDS $PID_CLAUDE"
+fi
+
+# Codex reviews Claude + Gemini responses
+if [[ "$CODEX_AVAILABLE" == "yes" && ( -n "$CLAUDE_RESPONSE" || -n "$GEMINI_RESPONSE" ) ]]; then
+    progress_msg "Codex reviewing peer responses..."
+    ./skills/council-orchestrator/scripts/query_codex.sh "{review_prompt}" > .council/stage2_review_openai.txt 2>&1 &
+    PID_CODEX=$!
+    PIDS="$PIDS $PID_CODEX"
+fi
+
+# Gemini reviews Claude + Codex responses
+if [[ "$GEMINI_AVAILABLE" == "yes" && ( -n "$CLAUDE_RESPONSE" || -n "$CODEX_RESPONSE" ) ]]; then
+    progress_msg "Gemini reviewing peer responses..."
+    ./skills/council-orchestrator/scripts/query_gemini.sh "{review_prompt}" > .council/stage2_review_gemini.txt 2>&1 &
+    PID_GEMINI=$!
+    PIDS="$PIDS $PID_GEMINI"
+fi
+
+# Wait for all reviews to complete
+for pid in $PIDS; do
+    wait "$pid" || true
+done
+
+progress_msg "Peer review phase complete."
+```
+
+#### 2.4 Validate Review Outputs
+
+Ensure reviews were captured:
+```bash
+validate_output ".council/stage2_review_claude.txt" "Claude Review" || true
+validate_output ".council/stage2_review_openai.txt" "Codex Review" || true
+validate_output ".council/stage2_review_gemini.txt" "Gemini Review" || true
+```
+
+**Output Files**:
+- `.council/stage2_review_claude.txt` - Claude's review of Codex + Gemini
+- `.council/stage2_review_openai.txt` - Codex's review of Claude + Gemini
+- `.council/stage2_review_gemini.txt` - Gemini's review of Claude + Codex
 
 ### Phase 3: Chairman Synthesis
 
