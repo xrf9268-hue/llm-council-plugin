@@ -2,6 +2,20 @@
   "name": "llm-council-plugin",
   "version": "1.0.0",
   "description": "Multi-model consensus engine integrating OpenAI Codex CLI, Gemini CLI, and Claude CLI for collaborative code review and problem-solving.",
+  "license": "MIT",
+  "repository": "https://github.com/xrf9268-hue/llm-council-plugin",
+  "homepage": "https://github.com/xrf9268-hue/llm-council-plugin",
+  "keywords": [
+    "multi-model",
+    "consensus",
+    "code-review",
+    "openai",
+    "gemini",
+    "claude",
+    "deliberation",
+    "peer-review",
+    "synthesis"
+  ],
   "author": {
     "name": "LLM Council Contributors",
     "url": "https://github.com/xrf9268-hue/llm-council-plugin"
