@@ -441,3 +441,275 @@ council_summary() {
     echo ""
     echo "═══════════════════════════════════════════════════════════"
 }
+
+# ============================================================================
+# Phase 7: Enhanced Progress Display Functions
+# ============================================================================
+
+# Stage indicator constants
+STAGE_OPINION="1"
+STAGE_REVIEW="2"
+STAGE_SYNTHESIS="3"
+
+# Display stage header with visual separator
+# Usage: stage_header <stage_number> <stage_name>
+stage_header() {
+    local stage_num="$1"
+    local stage_name="$2"
+    echo "" >&2
+    echo -e "${YELLOW}┌─────────────────────────────────────────────────────────┐${NC}" >&2
+    echo -e "${YELLOW}│  Stage $stage_num: $stage_name${NC}" >&2
+    echo -e "${YELLOW}└─────────────────────────────────────────────────────────┘${NC}" >&2
+    echo "" >&2
+}
+
+# Display member status with icon
+# Usage: member_status <member_name> <status> [details]
+# Status: consulting, responded, failed, absent, reviewing
+member_status() {
+    local member="$1"
+    local status="$2"
+    local details="${3:-}"
+    local icon=""
+    local color=""
+
+    case "$status" in
+        consulting)
+            icon="⏳"
+            color="$YELLOW"
+            ;;
+        responded)
+            icon="✓"
+            color="$GREEN"
+            ;;
+        failed)
+            icon="✗"
+            color="$RED"
+            ;;
+        absent)
+            icon="○"
+            color="$YELLOW"
+            ;;
+        reviewing)
+            icon="🔍"
+            color="$YELLOW"
+            ;;
+    esac
+
+    if [[ -n "$details" ]]; then
+        echo -e "  ${color}$icon $member: $status - $details${NC}" >&2
+    else
+        echo -e "  ${color}$icon $member: $status${NC}" >&2
+    fi
+}
+
+# Display progress bar (visual only, not functional progress)
+# Usage: progress_bar <current> <total> <label>
+progress_bar() {
+    local current="$1"
+    local total="$2"
+    local label="${3:-Progress}"
+    local width=30
+    local filled=$((current * width / total))
+    local empty=$((width - filled))
+
+    local bar=""
+    for ((i=0; i<filled; i++)); do bar+="█"; done
+    for ((i=0; i<empty; i++)); do bar+="░"; done
+
+    echo -e "  ${YELLOW}$label: [$bar] $current/$total${NC}" >&2
+}
+
+# Display estimated progress through council session
+# Usage: council_progress <stage> <substep>
+# stage: 1=opinion, 2=review, 3=synthesis
+# substep: 0-100 within stage
+council_progress() {
+    local stage="$1"
+    local substep="${2:-0}"
+    local total_stages=3
+    local progress=0
+
+    case "$stage" in
+        1) progress=$((substep / 3)) ;;          # 0-33%
+        2) progress=$((33 + substep / 3)) ;;     # 33-66%
+        3) progress=$((66 + substep / 3)) ;;     # 66-100%
+    esac
+
+    local width=40
+    local filled=$((progress * width / 100))
+    local empty=$((width - filled))
+
+    local bar=""
+    for ((i=0; i<filled; i++)); do bar+="▓"; done
+    for ((i=0; i<empty; i++)); do bar+="░"; done
+
+    echo -e "\n${YELLOW}Council Progress: [$bar] ${progress}%${NC}\n" >&2
+}
+
+# Display spinner during long operations (call in subshell)
+# Usage: spinner <pid> <message>
+spinner() {
+    local pid="$1"
+    local msg="${2:-Working...}"
+    local spin='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+    local i=0
+
+    while kill -0 "$pid" 2>/dev/null; do
+        local char="${spin:i++%${#spin}:1}"
+        echo -ne "\r  ${YELLOW}$char $msg${NC}" >&2
+        sleep 0.1
+    done
+    echo -e "\r  ${GREEN}✓ $msg - done${NC}" >&2
+}
+
+# Display member waiting status for parallel execution
+# Usage: waiting_for_members <member1> [member2] [member3]
+waiting_for_members() {
+    local members=("$@")
+    echo -e "\n${YELLOW}  Waiting for responses from:${NC}" >&2
+    for m in "${members[@]}"; do
+        echo -e "    ${YELLOW}⏳ $m${NC}" >&2
+    done
+}
+
+# Display completion status for all members
+# Usage: members_complete <responded_list> <failed_list>
+members_complete() {
+    local responded="$1"
+    local failed="$2"
+
+    echo "" >&2
+    if [[ -n "$responded" ]]; then
+        echo -e "  ${GREEN}Responded:${NC}" >&2
+        for m in $responded; do
+            echo -e "    ${GREEN}✓ $m${NC}" >&2
+        done
+    fi
+
+    if [[ -n "$failed" ]]; then
+        echo -e "  ${RED}Failed/Absent:${NC}" >&2
+        for m in $failed; do
+            echo -e "    ${RED}✗ $m${NC}" >&2
+        done
+    fi
+}
+
+# Display final report preview
+# Usage: preview_report <report_file> [num_lines]
+preview_report() {
+    local report_file="$1"
+    local num_lines="${2:-10}"
+
+    if [[ ! -s "$report_file" ]]; then
+        error_msg "Report file not found or empty: $report_file"
+        return 1
+    fi
+
+    echo "" >&2
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}" >&2
+    echo -e "${GREEN}                     COUNCIL VERDICT                       ${NC}" >&2
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}" >&2
+    echo "" >&2
+    head -n "$num_lines" "$report_file" >&2
+    echo "" >&2
+    echo -e "${YELLOW}... (see full report in $report_file)${NC}" >&2
+    echo "" >&2
+}
+
+# ============================================================================
+# Configuration Management Functions
+# ============================================================================
+
+# Default configuration file location
+COUNCIL_CONFIG_FILE="${COUNCIL_CONFIG_FILE:-$HOME/.council/config}"
+
+# Get a configuration value
+# Usage: config_get <key> [default_value]
+config_get() {
+    local key="$1"
+    local default="${2:-}"
+
+    if [[ -f "$COUNCIL_CONFIG_FILE" ]]; then
+        local value
+        value=$(grep "^${key}=" "$COUNCIL_CONFIG_FILE" 2>/dev/null | cut -d'=' -f2-)
+        if [[ -n "$value" ]]; then
+            echo "$value"
+            return 0
+        fi
+    fi
+
+    echo "$default"
+}
+
+# Set a configuration value
+# Usage: config_set <key> <value>
+config_set() {
+    local key="$1"
+    local value="$2"
+
+    # Ensure config directory exists
+    local config_dir
+    config_dir=$(dirname "$COUNCIL_CONFIG_FILE")
+    mkdir -p "$config_dir"
+
+    # Create file if doesn't exist
+    touch "$COUNCIL_CONFIG_FILE"
+
+    # Remove existing key if present
+    if grep -q "^${key}=" "$COUNCIL_CONFIG_FILE" 2>/dev/null; then
+        # macOS/BSD sed compatibility
+        if [[ "$(uname)" == "Darwin" ]]; then
+            sed -i '' "/^${key}=/d" "$COUNCIL_CONFIG_FILE"
+        else
+            sed -i "/^${key}=/d" "$COUNCIL_CONFIG_FILE"
+        fi
+    fi
+
+    # Append new value
+    echo "${key}=${value}" >> "$COUNCIL_CONFIG_FILE"
+    success_msg "Set $key=$value"
+}
+
+# List all configuration values
+# Usage: config_list
+config_list() {
+    echo ""
+    echo "Council Configuration"
+    echo "─────────────────────────────────────────────"
+
+    if [[ -f "$COUNCIL_CONFIG_FILE" ]]; then
+        echo "Config file: $COUNCIL_CONFIG_FILE"
+        echo ""
+        cat "$COUNCIL_CONFIG_FILE"
+    else
+        echo "No configuration file found."
+        echo ""
+        echo "Default values:"
+        echo "  enabled_members=claude,codex,gemini"
+        echo "  min_quorum=2"
+        echo "  max_prompt_length=10000"
+        echo "  timeout=120"
+    fi
+    echo ""
+    echo "─────────────────────────────────────────────"
+}
+
+# Check if a specific member is enabled
+# Usage: is_member_enabled <member_name>
+is_member_enabled() {
+    local member="$1"
+    local enabled
+    enabled=$(config_get "enabled_members" "claude,codex,gemini")
+
+    if [[ "$enabled" == *"$member"* ]]; then
+        return 0
+    fi
+    return 1
+}
+
+# Get list of enabled members
+# Usage: get_enabled_members
+get_enabled_members() {
+    config_get "enabled_members" "claude,codex,gemini"
+}

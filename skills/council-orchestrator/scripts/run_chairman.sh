@@ -38,7 +38,11 @@ if [[ ! -d "$COUNCIL_DIR" ]]; then
     exit 1
 fi
 
-progress_msg "Phase 3: Preparing Chairman Synthesis"
+# Display stage header
+stage_header "$STAGE_SYNTHESIS" "Chairman Synthesis"
+
+council_progress 3 10
+progress_msg "Preparing context for Chairman deliberation..."
 
 # Check for Stage 1 files
 STAGE1_FILES=()
@@ -84,8 +88,23 @@ if [[ ${#STAGE1_FILES[@]} -eq 0 ]]; then
     exit 1
 fi
 
-progress_msg "Found ${#STAGE1_FILES[@]} Stage 1 response(s): ${STAGE1_MEMBERS[*]}"
-progress_msg "Found ${#STAGE2_FILES[@]} Stage 2 review(s): ${STAGE2_MEMBERS[*]:-none}"
+council_progress 3 30
+progress_msg "Gathering evidence from council deliberation..."
+echo "" >&2
+
+# Display what we found
+for member in "${STAGE1_MEMBERS[@]}"; do
+    member_status "$member" "responded" "Stage 1 opinion available"
+done
+
+for member in "${STAGE2_MEMBERS[@]:-}"; do
+    if [[ -n "$member" ]]; then
+        member_status "$member" "responded" "Stage 2 review available"
+    fi
+done
+
+echo "" >&2
+progress_msg "Evidence summary: ${#STAGE1_FILES[@]} opinions, ${#STAGE2_FILES[@]} reviews"
 
 # Determine absent members
 ALL_MEMBERS=("Claude" "OpenAI Codex" "Google Gemini")
@@ -167,6 +186,9 @@ if [[ ${#ABSENT_STAGE2[@]} -gt 0 ]]; then
     CONTEXT_SUMMARY+="\n"
 fi
 
+council_progress 3 50
+progress_msg "Generating Chairman invocation prompt..."
+
 # Generate the chairman invocation prompt
 cat << EOF
 # Council Chairman: Synthesis Request
@@ -200,5 +222,8 @@ Remember to:
 - Identify and refute any incorrect or dangerous advice
 EOF
 
+council_progress 3 70
 progress_msg "Chairman invocation prompt generated."
-progress_msg "Pass the above prompt to the council-chairman sub-agent."
+progress_msg "Ready to invoke council-chairman sub-agent for final synthesis."
+echo "" >&2
+success_msg "The Chairman will now deliberate and produce the final verdict."

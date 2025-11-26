@@ -36,10 +36,16 @@ if [[ ! -d "$OUTPUT_DIR" ]]; then
     exit 1
 fi
 
+# Display stage header
+stage_header "$STAGE_REVIEW" "Peer Review (Cross-Examination)"
+
 # Check CLI availability
 CLAUDE_AVAILABLE=$(check_cli claude && echo "yes" || echo "no")
 CODEX_AVAILABLE=$(check_cli codex && echo "yes" || echo "no")
 GEMINI_AVAILABLE=$(check_cli gemini && echo "yes" || echo "no")
+
+council_progress 2 10
+progress_msg "Loading Stage 1 responses for review..."
 
 # Read Stage 1 outputs
 CLAUDE_RESPONSE=""
@@ -50,19 +56,19 @@ RESPONSE_COUNT=0
 if [[ -s "$OUTPUT_DIR/stage1_claude.txt" ]]; then
     CLAUDE_RESPONSE=$(cat "$OUTPUT_DIR/stage1_claude.txt")
     ((RESPONSE_COUNT++)) || true
-    progress_msg "Loaded Claude Stage 1 response"
+    member_status "Claude" "responded" "Stage 1 response loaded"
 fi
 
 if [[ -s "$OUTPUT_DIR/stage1_openai.txt" ]]; then
     CODEX_RESPONSE=$(cat "$OUTPUT_DIR/stage1_openai.txt")
     ((RESPONSE_COUNT++)) || true
-    progress_msg "Loaded Codex Stage 1 response"
+    member_status "OpenAI Codex" "responded" "Stage 1 response loaded"
 fi
 
 if [[ -s "$OUTPUT_DIR/stage1_gemini.txt" ]]; then
     GEMINI_RESPONSE=$(cat "$OUTPUT_DIR/stage1_gemini.txt")
     ((RESPONSE_COUNT++)) || true
-    progress_msg "Loaded Gemini Stage 1 response"
+    member_status "Google Gemini" "responded" "Stage 1 response loaded"
 fi
 
 # Check quorum for peer review (need at least 2 responses)
@@ -72,7 +78,8 @@ if [[ $RESPONSE_COUNT -lt 2 ]]; then
     exit 1
 fi
 
-progress_msg "Starting peer review with $RESPONSE_COUNT Stage 1 responses"
+council_progress 2 20
+progress_msg "Preparing cross-examination with $RESPONSE_COUNT responses"
 
 # Function to construct anonymized review prompt
 # Arguments: $1 = response_a, $2 = response_b, $3 = response_a_label (optional), $4 = response_b_label (optional)
@@ -127,7 +134,9 @@ PID_CLAUDE=""
 PID_CODEX=""
 PID_GEMINI=""
 
+council_progress 2 30
 progress_msg "Launching peer reviews in parallel..."
+echo "" >&2
 
 # Claude reviews Codex + Gemini responses
 if [[ "$CLAUDE_AVAILABLE" == "yes" ]]; then
@@ -147,7 +156,7 @@ if [[ "$CLAUDE_AVAILABLE" == "yes" ]]; then
     fi
 
     if [[ -n "$REVIEW_A" ]]; then
-        progress_msg "Claude reviewing peer responses..."
+        member_status "Claude" "reviewing" "evaluating Codex + Gemini"
         REVIEW_PROMPT=$(construct_review_prompt "$REVIEW_A" "$REVIEW_B")
         "$SCRIPT_DIR/query_claude.sh" "$REVIEW_PROMPT" > "$OUTPUT_DIR/stage2_review_claude.txt" 2>&1 &
         PID_CLAUDE=$!
@@ -172,7 +181,7 @@ if [[ "$CODEX_AVAILABLE" == "yes" ]]; then
     fi
 
     if [[ -n "$REVIEW_A" ]]; then
-        progress_msg "Codex reviewing peer responses..."
+        member_status "OpenAI Codex" "reviewing" "evaluating Claude + Gemini"
         REVIEW_PROMPT=$(construct_review_prompt "$REVIEW_A" "$REVIEW_B")
         "$SCRIPT_DIR/query_codex.sh" "$REVIEW_PROMPT" > "$OUTPUT_DIR/stage2_review_openai.txt" 2>&1 &
         PID_CODEX=$!
@@ -197,7 +206,7 @@ if [[ "$GEMINI_AVAILABLE" == "yes" ]]; then
     fi
 
     if [[ -n "$REVIEW_A" ]]; then
-        progress_msg "Gemini reviewing peer responses..."
+        member_status "Google Gemini" "reviewing" "evaluating Claude + Codex"
         REVIEW_PROMPT=$(construct_review_prompt "$REVIEW_A" "$REVIEW_B")
         "$SCRIPT_DIR/query_gemini.sh" "$REVIEW_PROMPT" > "$OUTPUT_DIR/stage2_review_gemini.txt" 2>&1 &
         PID_GEMINI=$!
@@ -213,6 +222,7 @@ if [[ -z "$PIDS" ]]; then
 fi
 
 # Wait for all background jobs and track results
+council_progress 2 50
 progress_msg "Waiting for peer reviews to complete..."
 FAILED=""
 SUCCEEDED=""
@@ -246,15 +256,11 @@ fi
 
 # Report results
 echo "" >&2
+council_progress 2 80
 progress_msg "Peer review phase complete"
 
-if [[ -n "$SUCCEEDED" ]]; then
-    success_msg "Reviews completed:$SUCCEEDED"
-fi
-
-if [[ -n "$FAILED" ]]; then
-    error_msg "Reviews failed:$FAILED"
-fi
+# Use enhanced display
+members_complete "$SUCCEEDED" "$FAILED"
 
 # Validate review outputs
 echo "" >&2
@@ -275,8 +281,9 @@ fi
 
 # Summary
 echo "" >&2
+council_progress 2 100
 if [[ $REVIEW_COUNT -gt 0 ]]; then
-    success_msg "Peer review complete: $REVIEW_COUNT review(s) captured"
+    success_msg "Stage 2 complete: $REVIEW_COUNT peer review(s) captured"
 else
     error_msg "No peer reviews were captured"
     exit 1
@@ -284,7 +291,8 @@ fi
 
 # Output file listing
 echo "" >&2
-progress_msg "Review output files:"
+progress_msg "Stage 2 review files:"
 ls -la "$OUTPUT_DIR"/stage2_review_*.txt 2>/dev/null || echo "No review files found" >&2
+echo "" >&2
 
 exit 0
