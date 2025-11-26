@@ -1,6 +1,7 @@
 ---
 description: View and manage LLM Council configuration settings.
 argument-hint: "[set <key> <value> | reset]"
+model: claude-haiku-4-5-20251001
 ---
 
 # Council Config
@@ -24,12 +25,13 @@ View and manage LLM Council configuration settings.
 | `max_prompt_length` | `10000` | Maximum characters allowed in prompts |
 | `timeout` | `120` | Timeout in seconds for CLI operations |
 
-## Implementation
+## Implementation Instructions
 
-When this command is invoked:
+When this command is invoked, use the **Bash tool** to execute the appropriate commands based on arguments:
 
-### Show Configuration (default)
+### Show Configuration (no arguments)
 
+Execute using Bash tool:
 ```bash
 source ./skills/council-orchestrator/scripts/council_utils.sh
 config_list
@@ -55,22 +57,24 @@ To modify settings, use:
 
 ### Set Configuration Value
 
-When user provides `set <key> <value>`:
+When user provides `set <key> <value>`, interpret the arguments as:
+- `$1` – subcommand (`set`)
+- `$2` – configuration key
+- `$3` – configuration value
 
+Execute using Bash tool:
 ```bash
 source ./skills/council-orchestrator/scripts/council_utils.sh
 config_set "$2" "$3"
 ```
 
-Interpret the arguments as:
-- `$1` – subcommand (`set`)
-- `$2` – configuration key
-- `$3` – configuration value
+Confirm the change to the user with a success message.
 
 ### Reset Configuration
 
 When user provides `reset`:
 
+Execute using Bash tool:
 ```bash
 rm -f ~/.council/config
 echo "Configuration reset to defaults."
