@@ -28,6 +28,53 @@ Keep new files in these folders unless there is a strong reason to introduce a n
 - You can still present a shorter user-facing form like `/council` in the command body, but the namespaced form (`/plugin-name:<command-name>`) always comes from the filename, so choose filenames accordingly.
 - When a command accepts arguments, add an `argument-hint` in the frontmatter that matches how users invoke it (e.g. `<question>` or `[set <key> <value> | reset]`) and explicitly wire that into the prompt using `$ARGUMENTS` (all args) or `$1`, `$2`, `$3`, etc. for structured subcommands.
 
+### Command Execution Model
+
+Our slash commands use the **instructional approach**:
+- Commands provide implementation guidance for Claude through clear "Implementation Instructions" sections
+- Claude intelligently uses its tools (Bash, Skill, etc.) to execute the instructions
+- This allows for flexible error handling, context-aware execution, and intelligent decision-making
+
+**Do NOT use**:
+- Direct bash execution with `!bash` prefix (unless command is trivial and fixed)
+- `allowed-tools` frontmatter (only needed for direct `!bash` execution)
+
+**DO use**:
+- Clear "Implementation Instructions" sections that explicitly state "Use the **Bash tool**" or "Use the **Skill tool**"
+- Appropriate 2025 model selection in frontmatter
+- Structured argument handling with `$ARGUMENTS` or positional parameters (`$1`, `$2`, `$3`)
+
+### Model Selection Guidelines (2025)
+
+All commands should specify appropriate models in frontmatter based on complexity:
+
+| Model | Model ID | Use Case | Examples |
+|-------|----------|----------|----------|
+| **Sonnet 4.5** | `claude-sonnet-4-5-20250929` | Complex orchestration, multi-step workflows, advanced reasoning | `/council` (multi-model coordination) |
+| **Haiku 4.5** | `claude-haiku-4-5-20251001` | Simple commands, configuration, status checks, help docs | `/council-config`, `/council-status`, `/council-help` |
+| **Omit** | - | Inherit from user settings (good default for flexibility) | Commands that should adapt to user preference |
+
+**Rationale**:
+- **Sonnet 4.5** provides the strongest reasoning for complex tasks requiring coordination, synthesis, and multi-step logic
+- **Haiku 4.5** offers fast, economical performance for straightforward operations like displaying config, running status checks, or showing help
+- Omitting `model` allows commands to inherit from the user's session settings, providing maximum flexibility
+
+### Argument Handling Best Practices
+
+- **Use `$ARGUMENTS`** when the command takes a single conceptual input (e.g., a question, a query string)
+  ```markdown
+  argument-hint: "<question>"
+  # In prompt: "Treat `$ARGUMENTS` as the user's complete question"
+  ```
+
+- **Use positional parameters** (`$1`, `$2`, `$3`) when the command has structured subcommands or multiple distinct arguments
+  ```markdown
+  argument-hint: "[set <key> <value> | reset]"
+  # In prompt: "When `$1` is 'set', use `$2` as key and `$3` as value"
+  ```
+
+- Always include `argument-hint` in frontmatter to guide auto-completion and user expectations
+
 ## Build, Test, and Development Commands
 
 - `./tests/test_runner.sh` – Run the test suite (idempotent; safe to run often).

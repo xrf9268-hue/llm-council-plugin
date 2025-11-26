@@ -1,36 +1,37 @@
 ---
 description: Check the availability and readiness of all LLM Council components.
+model: claude-haiku-4-5-20251001
 ---
 
 # Council Status
 
 Check the status and availability of LLM Council components.
 
-## Implementation
+## Implementation Instructions
 
-When this command is invoked, run the following diagnostic checks:
+When this command is invoked, use the **Bash tool** to run diagnostic checks and format the results for the user.
 
-### 1. CLI Availability Check
+### Step 1: CLI Availability Check
 
-Run the council utilities to check CLI availability:
-
+Execute using Bash tool:
 ```bash
 source ./skills/council-orchestrator/scripts/council_utils.sh
 get_cli_status
 ```
 
+Parse the output to determine which council member CLIs are available.
+
 Display the results in a formatted table:
 
 | Member | CLI | Status | Version |
 |--------|-----|--------|---------|
-| Claude | `claude` | [check] | [version if available] |
-| OpenAI Codex | `codex` | [check] | [version if available] |
-| Google Gemini | `gemini` | [check] | [version if available] |
+| Claude | `claude` | [✅ Available / ❌ Missing] | [version if available] |
+| OpenAI Codex | `codex` | [✅ Available / ❌ Missing] | [version if available] |
+| Google Gemini | `gemini` | [✅ Available / ❌ Missing] | [version if available] |
 
-### 2. Version Information
+### Step 2: Version Information
 
-For each available CLI, attempt to get version information:
-
+For each available CLI, execute using Bash tool:
 ```bash
 # Claude
 claude --version 2>/dev/null || echo "Version unknown"
@@ -42,23 +43,29 @@ codex --version 2>/dev/null || echo "Version unknown"
 gemini --version 2>/dev/null || echo "Version unknown"
 ```
 
-### 3. Configuration Status
+### Step 3: Configuration Status
 
-Display current configuration using:
-
+Execute using Bash tool:
 ```bash
 source ./skills/council-orchestrator/scripts/council_utils.sh
 config_list
 ```
 
-### 4. Quorum Assessment
+Display current configuration settings.
 
-Calculate and display quorum status:
+### Step 4: Quorum Assessment
+
+Calculate and display quorum status based on:
+- Available members count
+- Minimum quorum setting from config
+- Status: ✅ Ready / ⚠️ Not Ready
+
+Present as:
 - Total available members: X/3
 - Quorum requirement: Y members
-- Status: [Met/Not Met]
+- Status: [✅ Met / ⚠️ Not Met]
 
-### 5. Recent Session (if exists)
+### Step 5: Recent Session (if exists)
 
 If `.council/` directory exists from a previous session:
 - Show Stage 1 responses count
@@ -74,13 +81,13 @@ LLM Council Status
 ==================
 
 CLI Availability:
-  Claude    : [Available/Missing]
-  Codex     : [Available/Missing]
-  Gemini    : [Available/Missing]
+  Claude    : [✅ Available / ❌ Missing]
+  Codex     : [✅ Available / ❌ Missing]
+  Gemini    : [✅ Available / ❌ Missing]
 
 Council Readiness:
   Members   : X/3 available
-  Quorum    : [Ready/Not Ready] (minimum Y required)
+  Quorum    : [✅ Ready / ⚠️ Not Ready] (minimum Y required)
 
 Configuration:
   Config    : ~/.council/config
