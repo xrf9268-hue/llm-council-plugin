@@ -47,15 +47,27 @@ You need at least one CLI installed. For full council functionality, install all
 
 ### Installation
 
+#### Option A: Install from a marketplace (recommended)
+
+Follow the official docs for plugin marketplaces:
+
+1. In Claude Code, open the **Marketplaces** section.
+2. Add one of the following sources:
+   - **Add GitHub marketplace**: use `xrf9268-hue` as the GitHub owner (Claude will discover all repos under this owner that contain `.claude-plugin/marketplace.json`, including this plugin), or
+   - **Add Git repository**: use `https://github.com/xrf9268-hue/llm-council-plugin.git` directly as a marketplace source.
+3. After the marketplace syncs, search for **LLM Council** in the marketplace list and click **Install**.
+
+#### Option B: Install from a local checkout
+
 1. Clone this repository into your project or Claude Code plugins directory:
 
 ```bash
-# Option A: Clone as a standalone plugin
-git clone https://github.com/your-org/llm-council-plugin.git
+# Clone as a standalone plugin
+git clone https://github.com/xrf9268-hue/llm-council-plugin.git
 
-# Option B: Add to your project's .claude-plugins directory
+# Or add to your project's .claude-plugins directory
 cd your-project
-git clone https://github.com/your-org/llm-council-plugin.git .claude-plugins/llm-council
+git clone https://github.com/xrf9268-hue/llm-council-plugin.git .claude-plugins/llm-council
 ```
 
 2. Verify the installation by checking CLI availability:

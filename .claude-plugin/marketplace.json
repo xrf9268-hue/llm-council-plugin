@@ -6,14 +6,14 @@
   "longDescription": "The LLM Council plugin transforms Claude Code into a multi-model deliberation system. When you have a complex technical question, instead of getting one perspective, you get three AI models working together:\n\n1. **Opinion Collection**: Your question is sent to Claude, OpenAI Codex, and Google Gemini in parallel\n2. **Peer Review**: Each model anonymously reviews the others' responses, identifying strengths and weaknesses\n3. **Chairman Synthesis**: Claude Opus synthesizes all inputs into a final verdict with consensus points and areas of disagreement\n\nPerfect for architecture decisions, code reviews, debugging complex issues, and any question where multiple perspectives add value.",
   "author": {
     "name": "LLM Council Contributors",
-    "url": "https://github.com/your-org/llm-council-plugin"
+    "url": "https://github.com/xrf9268-hue/llm-council-plugin"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-org/llm-council-plugin.git"
+    "url": "https://github.com/xrf9268-hue/llm-council-plugin.git"
   },
-  "homepage": "https://github.com/your-org/llm-council-plugin",
+  "homepage": "https://github.com/xrf9268-hue/llm-council-plugin",
   "keywords": [
     "multi-model",
     "consensus",
@@ -94,11 +94,11 @@
   ],
   "screenshots": [
     {
-      "path": "screenshots/council-in-action.png",
+      "path": "./screenshots/council-in-action.png",
       "caption": "LLM Council deliberating on a technical question"
     },
     {
-      "path": "screenshots/final-verdict.png",
+      "path": "./screenshots/final-verdict.png",
       "caption": "The Chairman's synthesized verdict"
     }
   ],
@@ -118,8 +118,8 @@
   ],
   "pricing": "free",
   "support": {
-    "issues": "https://github.com/your-org/llm-council-plugin/issues",
-    "documentation": "https://github.com/your-org/llm-council-plugin#readme"
+    "issues": "https://github.com/xrf9268-hue/llm-council-plugin/issues",
+    "documentation": "https://github.com/xrf9268-hue/llm-council-plugin#readme"
   },
   "changelog": {
     "1.0.0": {
