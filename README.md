@@ -47,36 +47,12 @@ You need at least one CLI installed. For full council functionality, install all
 
 ### Installation
 
-#### Option A: Install from a marketplace (recommended)
+For a full installation and debugging walkthrough, see `docs/INSTALL_DEBUG.md`.
 
-Follow the official docs for plugin marketplaces:
+Quick summary:
 
-1. In Claude Code, open the **Marketplaces** section.
-2. Add one of the following sources:
-   - **Add GitHub marketplace**: use `xrf9268-hue` as the GitHub owner (Claude will discover all repos under this owner that contain `.claude-plugin/marketplace.json`, including this plugin), or
-   - **Add Git repository**: use `https://github.com/xrf9268-hue/llm-council-plugin.git` directly as a marketplace source.
-3. After the marketplace syncs, search for **LLM Council** in the marketplace list and click **Install**.
-
-#### Option B: Install from a local checkout
-
-1. Clone this repository into your project or Claude Code plugins directory:
-
-```bash
-# Clone as a standalone plugin
-git clone https://github.com/xrf9268-hue/llm-council-plugin.git
-
-# Or add to your project's .claude-plugins directory
-cd your-project
-git clone https://github.com/xrf9268-hue/llm-council-plugin.git .claude-plugins/llm-council
-```
-
-2. Verify the installation by checking CLI availability:
-
-```bash
-# Run the status check
-./skills/council-orchestrator/scripts/council_utils.sh
-source ./skills/council-orchestrator/scripts/council_utils.sh && get_cli_status
-```
+- Recommended: in Claude Code, add a GitHub marketplace with owner `xrf9268-hue` (or add the Git repo `https://github.com/xrf9268-hue/llm-council-plugin.git`), then install **LLM Council** from the marketplace.
+- For local development: clone this repo into `.claude-plugins/llm-council` in your project and ensure the scripts in `hooks/` and `skills/council-orchestrator/scripts/` are executable.
 
 ### Usage
 
