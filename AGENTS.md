@@ -19,7 +19,13 @@ Keep new files in these folders unless there is a strong reason to introduce a n
 - When changing `.claude-plugin/*` manifests or installation flows, also update `docs/INSTALL.md` and the Installation section in `README.md` to stay in sync.
 - `plugin.json` must use an `author` **object** (not a string), and should not introduce extra top-level keys beyond the official plugin manifest schema (for example, do not add `strict` here).
 - `marketplace.json` plugin entries must only use fields allowed by the marketplace schema; if you need rich marketing content (screenshots, long descriptions, pricing, changelog, etc.), keep it in `README.md` / `docs/INSTALL.md`, not in the marketplace entry.
+- Paths in manifests should use the current filenames (e.g. `"./commands/council.md"` for the main `/council` command).
 - Before publishing changes to manifests, run `claude plugin validate .` locally to catch schema errors early.
+
+## Slash Commands
+
+- Slash command files live in `commands/` and follow the official rule `/<command-name>` where `<command-name>` is derived from the Markdown filename (without `.md`), e.g. `council.md` → `/llm-council-plugin:council`.
+- You can still present a shorter user-facing form like `/council` in the command body, but the namespaced form (`/plugin-name:<command-name>`) always comes from the filename, so choose filenames accordingly.
 
 ## Build, Test, and Development Commands
 

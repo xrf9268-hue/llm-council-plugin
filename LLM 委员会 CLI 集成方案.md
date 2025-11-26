@@ -94,7 +94,7 @@ llm-council-plugin/
 │     ├── query\_gemini.sh  
 │     └── query\_claude.sh  
 ├── commands/  
-│ └── summon-council.md \# Slash Command 定义 23  
+│ └── council.md \# Slash Command 定义 23  
 └── hooks/  
   └── hooks.json \# 生命周期钩子配置 13  
 这种结构清晰地分离了声明式配置（json/md）与命令式逻辑（sh），便于通过 Git 进行版本控制。
@@ -112,7 +112,7 @@ JSON
   "author": "Refactor-Architect",  
   "strict": true,   
   "commands": \[  
-    "./commands/summon-council.md"  
+    "./commands/council.md"  
   \],  
   "agents": \[  
     "./agents/council-chairman.md"  
@@ -341,7 +341,7 @@ skills:
 
 通过 /council 命令，我们将复杂的后台逻辑封装为简单的一行指令 23。
 
-**文件路径：** commands/summon-council.md
+**文件路径：** commands/council.md
 
 # **/council**
 

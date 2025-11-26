@@ -266,7 +266,7 @@ llm-council-plugin/
 ├── agents/
 │   └── council-chairman.md  # Chairman sub-agent definition
 ├── commands/
-│   ├── summon-council.md    # /council command
+│   ├── council.md           # /council command
 │   ├── council-help.md      # /council-help command
 │   ├── council-status.md    # /council-status command
 │   └── council-config.md    # /council-config command

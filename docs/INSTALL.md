@@ -68,19 +68,29 @@ source ./skills/council-orchestrator/scripts/council_utils.sh && get_cli_status
 
 Confirm at least `claude` is reported as available.
 
-### Check plugin components
+### Check plugin commands
 
 In Claude Code:
 
 - Open the plugin list and verify **LLM Council** is installed and enabled.
-- Open the plugin details and confirm commands like `/council`, `/council-help`, `/council-status`, `/council-config` are listed.
+- Start typing `/council` in the chat input. You should see both:
+  - Unprefixed commands, e.g. `/council`, `/council-help`, `/council-status`, `/council-config`
+  - Namespaced plugin commands, e.g. `/llm-council-plugin:council`, `/llm-council-plugin:council-help`, etc.
 
-### Check `/council` command
+Per the official slash command docs, the namespaced form (`/plugin-name:command-name`) is optional unless there are name collisions. For normal use you can just type the unprefixed versions.
 
-In a Claude Code chat:
+### Run the `/council` command
+
+In a Claude Code chat, run either of the following (they are equivalent):
 
 ```text
 /council "test query from Claude Code"
+```
+
+or
+
+```text
+/llm-council-plugin:council "test query from Claude Code"
 ```
 
 Expect:
@@ -155,4 +165,3 @@ Once these work reliably in the terminal, they should also work when invoked thr
     ```).
   - Confirm the repo is public and contains `.claude-plugin/marketplace.json`.
   - Trigger a marketplace refresh in Claude Code and search again; you should see a marketplace `llm-council` with a plugin `llm-council-plugin`.
-

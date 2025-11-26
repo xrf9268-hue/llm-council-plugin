@@ -7,7 +7,7 @@
     "url": "https://github.com/xrf9268-hue/llm-council-plugin"
   },
   "commands": [
-    "./commands/summon-council.md",
+    "./commands/council.md",
     "./commands/council-help.md",
     "./commands/council-status.md",
     "./commands/council-config.md"

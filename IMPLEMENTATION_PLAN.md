@@ -16,7 +16,7 @@ This plan outlines the phased implementation of the LLM Council as a Claude Code
 - [x] Define placeholder paths for commands, agents, skills
 
 ### 1.2 Basic Slash Command
-- [x] Create `commands/summon-council.md` with basic structure
+- [x] Create `commands/council.md` with basic structure
 - [x] Implement simple echo/acknowledgment response
 - [ ] Verify `/council` command appears in Claude Code
 
@@ -33,7 +33,7 @@ llm-council-plugin/
 │       ├── SKILL.md
 │       └── scripts/
 ├── commands/
-│   └── summon-council.md
+│   └── council.md
 ├── hooks/
 │   └── hooks.json
 └── .gitignore
@@ -299,7 +299,7 @@ Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5
 
 ### Phase 1 Files
 - [x] `.claude-plugin/plugin.json`
-- [x] `commands/summon-council.md`
+- [x] `commands/council.md`
 - [x] `skills/council-orchestrator/SKILL.md`
 - [x] `agents/council-chairman.md`
 - [x] `hooks/hooks.json`
