@@ -22,6 +22,14 @@ Keep new files in these folders unless there is a strong reason to introduce a n
 - Paths in manifests should use the current filenames (e.g. `"./commands/council.md"` for the main `/council` command).
 - Before publishing changes to manifests, run `claude plugin validate .` locally to catch schema errors early.
 
+### Official References
+
+When changing `.claude-plugin/*` manifests or installation flows, validate against these official schemas:
+
+- [Plugin Manifest Reference](https://code.claude.com/docs/en/plugins-reference.md) - Official plugin.json schema
+- [Marketplace Schema](https://code.claude.com/docs/en/marketplace.md) - Official marketplace.json schema
+- [Plugin Development Guide](https://code.claude.com/docs/en/plugins.md) - Plugin development best practices
+
 ## Slash Commands
 
 - Slash command files live in `commands/` and follow the official rule `/<command-name>` where `<command-name>` is derived from the Markdown filename (without `.md`), e.g. `council.md` → `/llm-council-plugin:council`.
@@ -184,6 +192,126 @@ Our `council-orchestrator` skill demonstrates all these best practices:
 - ✓ Security documentation (SECURITY.md)
 - ✓ Template extraction (templates/)
 - ✓ Input validation (validate_user_input function)
+
+## Hooks Best Practices (2025)
+
+Following the official Claude Code hooks documentation, our hooks adhere to these best practices:
+
+### Structured JSON Output
+
+All hooks must use structured JSON output per the official Claude Code hooks API:
+
+**PreToolUse hooks** (validation before execution):
+```json
+{
+  "permissionDecision": "allow|deny|ask",
+  "permissionDecisionReason": "explanation if denied/ask",
+  "systemMessage": "user-facing message",
+  "suppressOutput": false
+}
+```
+
+**PostToolUse hooks** (analysis after execution):
+```json
+{
+  "additionalContext": "context for Claude to consider",
+  "systemMessage": "user-facing warning/info",
+  "suppressOutput": false
+}
+```
+
+### Exit Code Conventions
+
+- **PreToolUse**: Exit 0 with JSON (allow), Exit 2 (block with error message)
+- **PostToolUse**: Exit 0 with JSON (continue with context), non-zero for logging only (non-blocking)
+
+### Security Model
+
+Our hooks implement **defense in depth** with these principles:
+
+1. **Allow by Default** - Focus on actual security threats, not style or legitimate shell operations
+2. **Fail Open** - Missing dependencies (like `jq`) don't block operations; hooks gracefully degrade
+3. **Structured Communication** - Use official JSON schema for Claude integration, not plain text
+4. **Validation Over Blocking** - PreToolUse validates inputs; PostToolUse provides intelligent context
+
+### Hook Types and Responsibilities
+
+**PreToolUse (`pre-tool.sh`)** - Validates commands before execution:
+- Command length validation (configurable via `COUNCIL_MAX_COMMAND_LENGTH`, default: 50000)
+- Injection pattern detection (warnings only, not blocking legitimate shell syntax)
+- Council script path validation (blocking if scripts missing)
+- System path protection warnings (informational)
+
+**PostToolUse (`post-tool.sh`)** - Analyzes outputs after execution:
+- Rate limit detection with retry guidance
+- Authentication error detection with credential check guidance
+- Output size monitoring and truncation suggestions
+- Council quorum verification (minimum 2 models)
+- Sensitive data leak detection (API keys, tokens)
+
+All PostToolUse checks are **informational and non-blocking**.
+
+### Environment Variables
+
+Hooks use these environment variables for configuration:
+
+**Provided by Claude Code:**
+- `CLAUDE_PROJECT_DIR` - Project root path (always use for resolving relative paths)
+- `CLAUDE_PLUGIN_ROOT` - Plugin installation path
+
+**Plugin-specific (configurable):**
+- `COUNCIL_DIR` - Council session directory (default: `.council`)
+- `COUNCIL_MAX_COMMAND_LENGTH` - PreToolUse max command size (default: 50000)
+- `COUNCIL_MAX_OUTPUT_LENGTH` - PostToolUse output warning threshold (default: 500000)
+
+### Hook Development Guidelines
+
+**When to use hooks:**
+- Input validation before potentially dangerous operations
+- Security threat detection (injection, path traversal)
+- Post-execution analysis and intelligent context provision
+- Operational monitoring (rate limits, quotas, quorum)
+
+**What hooks should NOT do:**
+- ❌ Block legitimate shell operations (pipes, redirects, command chaining are required)
+- ❌ Enforce style guidelines or code formatting
+- ❌ Replace proper authentication and secrets management
+- ❌ Make network calls or expensive computations (respect timeout limits)
+
+### Testing and Validation
+
+Hooks are tested as part of the plugin test suite:
+
+```bash
+# Run all tests including hooks
+./tests/test_runner.sh
+
+# Test hooks in isolation
+./tests/test_hooks.sh
+
+# Manual testing examples in hooks/README.md
+```
+
+**Test coverage requirements:**
+- Integration tests (executable, config validation)
+- PreToolUse tests (command length, validation, blocking behavior)
+- PostToolUse tests (detection patterns, JSON structure, context provision)
+- Edge cases (missing jq, timeouts, malformed input)
+
+### Configuration and Troubleshooting
+
+See `hooks/README.md` for comprehensive documentation including:
+- Detailed hook behavior and JSON schemas
+- Security model and design principles
+- Configuration via environment variables
+- Manual testing procedures
+- Troubleshooting common issues (hook not running, jq unavailable, timeouts, false positives)
+
+### References
+
+- [Claude Code Hooks Guide](https://code.claude.com/docs/en/hooks-guide.md) - Official best practices
+- [Claude Code Hooks Reference](https://code.claude.com/docs/en/hooks.md) - API reference
+- [Local hooks documentation](../hooks/README.md) - Plugin-specific implementation details
 
 ## Build, Test, and Development Commands
 
