@@ -2,23 +2,29 @@
 #
 # post-tool.sh - PostToolUse hook for LLM Council plugin
 #
-# This hook validates outputs after tool execution to ensure:
-# - Output sanity checks
-# - Rate limit detection
+# This hook validates outputs after tool execution to provide:
+# - Rate limit detection and guidance
 # - Error pattern detection
 # - Quorum verification for council operations
+# - Sensitive data leak detection
 #
 # Called by Claude Code after Bash tool execution.
 # Receives tool context via stdin as JSON.
 #
 # Exit codes:
-#   0 - Continue (output acceptable)
-#   1 - Signal issue (logged but doesn't block)
+#   0 - Continue (may return JSON with context/warnings)
+#   non-zero - Signal issue (logged, non-blocking)
+#
+# Output: JSON object with optional fields (exit 0 only):
+#   - additionalContext: context for Claude to consider
+#   - systemMessage: message for the user
+#   - suppressOutput: true to hide hook output
 
 set -euo pipefail
 
 # Configuration
-MAX_OUTPUT_LENGTH="${COUNCIL_MAX_OUTPUT_LENGTH:-100000}"
+MAX_OUTPUT_LENGTH="${COUNCIL_MAX_OUTPUT_LENGTH:-500000}"
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
 COUNCIL_DIR="${COUNCIL_DIR:-.council}"
 MIN_QUORUM=2
 
@@ -26,15 +32,23 @@ MIN_QUORUM=2
 INPUT=$(cat)
 
 # Extract tool info from JSON (requires jq)
+TOOL_NAME=""
+TOOL_OUTPUT=""
+EXIT_CODE="0"
+
 if command -v jq &>/dev/null; then
     TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null || echo "")
     TOOL_OUTPUT=$(echo "$INPUT" | jq -r '.tool_output // empty' 2>/dev/null || echo "")
-    EXIT_CODE=$(echo "$INPUT" | jq -r '.exit_code // "0"' 2>/dev/null || echo "0")
+    EXIT_CODE=$(echo "$INPUT" | jq -r '.exit_code // "0"' 2>/dev/null || echo "")
 else
-    TOOL_NAME=""
-    TOOL_OUTPUT=""
-    EXIT_CODE="0"
+    # If jq unavailable, exit gracefully without validation
+    echo '{"additionalContext":"Post-tool validation skipped (jq not available)","suppressOutput":true}'
+    exit 0
 fi
+
+# Array to collect context messages
+declare -a CONTEXT_MESSAGES=()
+declare -a SYSTEM_MESSAGES=()
 
 # Function to check for rate limit errors
 check_rate_limit() {
@@ -53,7 +67,8 @@ check_rate_limit() {
 
     for pattern in "${rate_limit_patterns[@]}"; do
         if [[ "$output" == *"$pattern"* ]]; then
-            echo "WARNING: Rate limit detected in output. Consider waiting before retry." >&2
+            CONTEXT_MESSAGES+=("Rate limit detected. Consider implementing exponential backoff or waiting before retry.")
+            SYSTEM_MESSAGES+=("⚠️  Rate limit detected - consider waiting before retrying")
             return 1
         fi
     done
@@ -81,7 +96,8 @@ check_auth_errors() {
 
     for pattern in "${auth_patterns[@]}"; do
         if [[ "$output" == *"$pattern"* ]]; then
-            echo "ERROR: Authentication issue detected. Check API credentials." >&2
+            CONTEXT_MESSAGES+=("Authentication error detected. Check API credentials in environment variables.")
+            SYSTEM_MESSAGES+=("🔐 Authentication error - check API credentials")
             return 1
         fi
     done
@@ -95,45 +111,9 @@ check_output_length() {
     local length=${#output}
 
     if [[ $length -gt $MAX_OUTPUT_LENGTH ]]; then
-        echo "WARNING: Output very large ($length chars). May impact context." >&2
+        CONTEXT_MESSAGES+=("Output is very large ($length chars). Consider truncating or summarizing if it impacts context window.")
+        SYSTEM_MESSAGES+=("⚠️  Large output detected ($length chars)")
     fi
-
-    return 0
-}
-
-# Function to check for empty or error outputs
-check_output_quality() {
-    local output="$1"
-    local exit_code="$2"
-
-    # Check for non-zero exit code
-    if [[ "$exit_code" != "0" ]]; then
-        echo "WARNING: Tool exited with code $exit_code" >&2
-    fi
-
-    # Check for empty output (might be okay for some commands)
-    if [[ -z "$output" ]]; then
-        echo "INFO: Tool produced no output" >&2
-    fi
-
-    # Check for common error patterns
-    local error_patterns=(
-        'Error:'
-        'ERROR:'
-        'error:'
-        'Failed:'
-        'FAILED:'
-        'failed:'
-        'Exception:'
-        'Traceback'
-    )
-
-    for pattern in "${error_patterns[@]}"; do
-        if [[ "$output" == *"$pattern"* ]]; then
-            echo "INFO: Error pattern detected in output: $pattern" >&2
-            break
-        fi
-    done
 
     return 0
 }
@@ -147,20 +127,23 @@ verify_council_quorum() {
         return 0
     fi
 
-    # Check if we're in a council session
-    if [[ ! -d "$COUNCIL_DIR" ]]; then
+    # Check if we're in a council session (use PROJECT_DIR)
+    local council_path="$PROJECT_DIR/$COUNCIL_DIR"
+    [[ -d "$COUNCIL_DIR" ]] && council_path="$COUNCIL_DIR"
+
+    if [[ ! -d "$council_path" ]]; then
         return 0
     fi
 
     # Count Stage 1 responses
     local stage1_count=0
-    [[ -s "$COUNCIL_DIR/stage1_claude.txt" ]] && ((stage1_count++)) || true
-    [[ -s "$COUNCIL_DIR/stage1_openai.txt" ]] && ((stage1_count++)) || true
-    [[ -s "$COUNCIL_DIR/stage1_gemini.txt" ]] && ((stage1_count++)) || true
+    [[ -s "$council_path/stage1_claude.txt" ]] && ((stage1_count++)) || true
+    [[ -s "$council_path/stage1_openai.txt" ]] && ((stage1_count++)) || true
+    [[ -s "$council_path/stage1_gemini.txt" ]] && ((stage1_count++)) || true
 
     if [[ $stage1_count -gt 0 && $stage1_count -lt $MIN_QUORUM ]]; then
-        echo "WARNING: Council quorum not met. Only $stage1_count of $MIN_QUORUM required responses." >&2
-        echo "Council may proceed with degraded coverage." >&2
+        CONTEXT_MESSAGES+=("Council quorum not met: only $stage1_count of $MIN_QUORUM required responses available. Consider degraded mode or retry.")
+        SYSTEM_MESSAGES+=("⚠️  Council quorum low: $stage1_count/$MIN_QUORUM models responded")
     fi
 
     return 0
@@ -172,17 +155,17 @@ check_sensitive_data_leak() {
 
     # Patterns that might indicate sensitive data exposure
     local sensitive_patterns=(
-        'sk-[a-zA-Z0-9]{48}'      # OpenAI API key pattern
-        'AIza[a-zA-Z0-9_-]{35}'   # Google API key pattern
-        'AKIA[A-Z0-9]{16}'        # AWS access key pattern
-        'ghp_[a-zA-Z0-9]{36}'     # GitHub personal access token
-        'gho_[a-zA-Z0-9]{36}'     # GitHub OAuth token
-        'Bearer [a-zA-Z0-9._-]+'  # Bearer token pattern
+        'sk-(proj-)?[a-zA-Z0-9]{20,}'   # OpenAI API key pattern (old and new formats)
+        'AIza[a-zA-Z0-9_-]{35}'         # Google API key pattern
+        'AKIA[A-Z0-9]{16}'              # AWS access key pattern
+        'ghp_[a-zA-Z0-9]{36}'           # GitHub personal access token
+        'gho_[a-zA-Z0-9]{36}'           # GitHub OAuth token
     )
 
     for pattern in "${sensitive_patterns[@]}"; do
         if echo "$output" | grep -qE "$pattern" 2>/dev/null; then
-            echo "WARNING: Potential sensitive data detected in output. Review before sharing." >&2
+            CONTEXT_MESSAGES+=("SECURITY: Potential API key or token detected in output. Review and sanitize before sharing.")
+            SYSTEM_MESSAGES+=("🔒 Potential sensitive data detected in output")
             return 1
         fi
     done
@@ -190,22 +173,55 @@ check_sensitive_data_leak() {
     return 0
 }
 
+# Function to build JSON response with collected messages
+build_json_response() {
+    local additional_context=""
+    local system_message=""
+
+    # Join context messages with newlines
+    if [[ ${#CONTEXT_MESSAGES[@]} -gt 0 ]]; then
+        additional_context=$(printf '%s\n' "${CONTEXT_MESSAGES[@]}")
+    fi
+
+    # Join system messages with newlines
+    if [[ ${#SYSTEM_MESSAGES[@]} -gt 0 ]]; then
+        system_message=$(printf '%s\n' "${SYSTEM_MESSAGES[@]}")
+    fi
+
+    # Build JSON response
+    jq -n \
+        --arg context "$additional_context" \
+        --arg message "$system_message" \
+        '{
+            additionalContext: (if $context != "" then $context else null end),
+            systemMessage: (if $message != "" then $message else null end),
+            suppressOutput: false
+        }'
+}
+
 # Main validation logic
 main() {
     # Only validate Bash tool outputs
     if [[ "$TOOL_NAME" != "Bash" && "$TOOL_NAME" != "bash" ]]; then
+        echo '{}'
         exit 0
     fi
 
-    # Run all checks (non-blocking - just informational)
+    # Skip if no output to validate
+    if [[ -z "$TOOL_OUTPUT" ]]; then
+        echo '{}'
+        exit 0
+    fi
+
+    # Run all checks (collect warnings/context)
     check_rate_limit "$TOOL_OUTPUT" || true
     check_auth_errors "$TOOL_OUTPUT" || true
     check_output_length "$TOOL_OUTPUT" || true
-    check_output_quality "$TOOL_OUTPUT" "$EXIT_CODE" || true
     verify_council_quorum "$TOOL_OUTPUT" || true
     check_sensitive_data_leak "$TOOL_OUTPUT" || true
 
-    # Post-tool hooks don't block, just inform
+    # Build and output JSON response
+    build_json_response
     exit 0
 }
 
