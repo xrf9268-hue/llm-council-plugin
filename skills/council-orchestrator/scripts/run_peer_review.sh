@@ -81,51 +81,39 @@ fi
 council_progress 2 20
 progress_msg "Preparing cross-examination with $RESPONSE_COUNT responses"
 
-# Function to construct anonymized review prompt
-# Arguments: $1 = response_a, $2 = response_b, $3 = response_a_label (optional), $4 = response_b_label (optional)
+# Load review template
+TEMPLATE_PATH="$SCRIPT_DIR/../templates/review_prompt.txt"
+if [[ ! -f "$TEMPLATE_PATH" ]]; then
+    error_msg "Review template not found: $TEMPLATE_PATH"
+    exit 1
+fi
+
+REVIEW_TEMPLATE=$(cat "$TEMPLATE_PATH")
+progress_msg "Loaded peer review template"
+
+# Function to construct anonymized review prompt using template
+# Arguments: $1 = response_a, $2 = response_b (optional)
 construct_review_prompt() {
     local response_a="$1"
     local response_b="${2:-}"
 
-    cat <<EOF
-You are a peer reviewer evaluating responses to a technical question.
+    # Start with template and substitute question
+    local prompt="${REVIEW_TEMPLATE//\{\{QUESTION\}\}/$ORIGINAL_QUESTION}"
 
-## Original Question
-$ORIGINAL_QUESTION
+    # Substitute Response A
+    prompt="${prompt//\{\{RESPONSE_A\}\}/$response_a}"
 
-## Responses to Review
-
---- Response A ---
-$response_a
-
-EOF
-
+    # Substitute Response B (or handle single response case)
     if [[ -n "$response_b" ]]; then
-        cat <<EOF
---- Response B ---
-$response_b
-
-EOF
+        # Multiple responses: substitute Response B normally
+        prompt="${prompt//\{\{RESPONSE_B\}\}/$response_b}"
+    else
+        # Single response: remove Response B section from template
+        # This handles the edge case where only one peer response exists
+        prompt=$(echo "$prompt" | sed '/--- Response B ---/,/^$/d')
     fi
 
-    cat <<EOF
-## Review Instructions
-
-Please evaluate each response for:
-
-1. **Technical Accuracy**: Are the facts, code, and explanations correct?
-2. **Code Quality** (if applicable): Is the code well-structured, readable, and following best practices?
-3. **Security Considerations**: Are there any security issues or vulnerabilities?
-4. **Completeness**: Does the response fully address the question?
-5. **Clarity**: Is the explanation clear and easy to understand?
-
-For each response, provide:
-- A brief summary of strengths
-- Any weaknesses or errors identified
-- An overall assessment (Strong/Adequate/Weak)
-
-Be objective and constructive in your critique.
-EOF
+    echo "$prompt"
 }
 
 # Track PIDs for parallel execution (bash 3 compatible)
