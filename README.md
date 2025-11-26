@@ -347,6 +347,7 @@ MIT License - See LICENSE file for details.
 
 ## Acknowledgments
 
+- Inspired by [karpathy/llm-council](https://github.com/karpathy/llm-council): LLM Council works together to answer your hardest questions - GitHub, accessed November 25, 2025
 - OpenAI for the Codex CLI
 - Google for the Gemini CLI
 - Anthropic for Claude Code and the plugin system
