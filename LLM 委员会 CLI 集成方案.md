@@ -31,7 +31,7 @@
 
 原始架构在实际部署中面临诸多挑战，驱动了向 Claude Code Plugin 的迁移：
 
-* **依赖地狱与环境碎片化**：用户在使用原始 Web 应用时，经常面临 Node.js、npm 或 Python 环境配置的困扰，尤其是在 Windows 平台上 2。Claude Code 通过统一的 Plugin 容器和 Docker 化的执行环境，能够有效屏蔽底层依赖差异 3。  
+* **依赖地狱与环境碎片化**：用户在使用原始 Web 应用时，经常面临 Node.js、npm 或 Python 环境配置的困扰，尤其是在 Windows 平台上 2。Claude Code 通过统一的 Plugin 运行环境和受控的终端沙箱，能够有效屏蔽底层依赖差异 3。  
 * **上下文断裂**：Web 应用运行在浏览器沙箱中，无法直接读取开发者正在编辑的代码文件或 Git 状态。而 Claude Code 原生集成于终端，能够通过 ls、grep 等工具实时感知项目结构 3，使得“理事会”的建议不仅仅是通用的编程知识，而是针对当前代码库的精准建议。  
 * **维护的可持续性**：原作者明确表示不打算长期维护该项目 1。将其重构为标准化的 Plugin 13，意味着可以利用 Claude Code 蓬勃发展的插件市场 14 进行分发和社区维护。
 
@@ -45,7 +45,7 @@
 
 在 Claude Code 生态中，**Plugin** 扮演着“集装箱”的角色。它通过一个严格定义的 plugin.json 清单文件 13，将命令（Commands）、代理（Agents）、技能（Skills）和钩子（Hooks）打包在一起。
 
-对于 llm-council，Plugin 不仅是代码的集合，更是权限与依赖的声明。通过在 plugin.json 中声明对 openai/codex 和 google-gemini/gemini-cli 的依赖，我们可以利用 Claude Code 的环境检测机制，引导用户完成必要的 CLI 工具安装 19。此外，Plugin 架构支持通过 Git 仓库直接分发 14，极大地简化了部署流程——用户只需执行 /plugin install 即可获得完整的“理事会”功能，而无需手动配置 Web 服务器。
+对于 llm-council，Plugin 不仅是代码的集合，更是权限与依赖的声明。CLI 工具（如 openai/codex 和 google-gemini/gemini-cli）的存在性检查，不是由 plugin.json 自动完成，而是由 Skills 中的 Bash 前置逻辑通过 `command -v` 等方式显式验证 19。Plugin 架构支持通过 Git 仓库直接分发 14，极大地简化了部署流程——用户只需执行 /plugin install 即可获得完整的“理事会”功能，而无需手动配置 Web 服务器。
 
 ### **3.2 Skills（技能）：程序性知识的渐进式披露**
 
@@ -81,22 +81,22 @@
 遵循 Claude Code 的最佳实践 4，我们将项目结构设计如下，以确保组件的模块化与可维护性：
 
 llm-council-plugin/  
-├──.claude-plugin/  
-│ └── marketplace.json \# 市场元数据 14  
-├── plugin.json \# 核心清单文件 13  
+├── .claude-plugin/  
+│ ├── plugin.json \# 核心清单文件 13  
+│ └── marketplace.json \# 市场元数据（可选）14  
 ├── agents/  
 │ └── council-chairman.md \# 主席子代理定义 12  
 ├── skills/  
 │ └── council-orchestrator/ \# 编排技能目录  
-│ ├── SKILL.md \# 技能定义与流程 5  
-│ └── scripts/ \# 执行脚本  
-│ ├── query\_codex.sh  
-│ ├── query\_gemini.sh  
-│ └── query\_claude.sh  
+│   ├── SKILL.md \# 技能定义与流程 5  
+│   └── scripts/ \# 执行脚本  
+│     ├── query\_codex.sh  
+│     ├── query\_gemini.sh  
+│     └── query\_claude.sh  
 ├── commands/  
 │ └── summon-council.md \# Slash Command 定义 23  
 └── hooks/  
-└── lifecycle.json \# 生命周期钩子 13  
+  └── hooks.json \# 生命周期钩子配置 13  
 这种结构清晰地分离了声明式配置（json/md）与命令式逻辑（sh），便于通过 Git 进行版本控制。
 
 ### **4.2 插件清单配置 (plugin.json)**
@@ -108,38 +108,41 @@ JSON
 {  
   "name": "llm-council-plugin",  
   "version": "2.0.0",  
-  "description": "基于 Claude Code 架构的多模型共识引擎，集成 OpenAI GPT-5.1, Gemini 3 Pro 与 Claude Sonnet 4.5 CLI。",  
+  "description": "基于 Claude Code 架构的多模型共识引擎，集成 OpenAI Codex CLI、Gemini CLI 与 Claude CLI。",  
   "author": "Refactor-Architect",  
   "strict": true,   
   "commands": \[  
-    "commands/summon-council.md"  
+    "./commands/summon-council.md"  
   \],  
   "agents": \[  
-    "agents/council-chairman.md"  
+    "./agents/council-chairman.md"  
   \],  
   "skills": \[  
-    "skills/council-orchestrator/"  
+    "./skills/council-orchestrator/"  
   \],  
-  "hooks": "hooks/lifecycle.json",  
-  "dependencies": {  
-    "cli-tools": \["codex", "gemini", "claude"\]   
-  }  
+  "hooks": "./hooks/hooks.json"  
 }
 
 **关键设计决策：**
 
 * "strict": true：强制要求所有引用的文件必须存在，且符合格式规范，这在开发阶段能快速暴露路径错误 14。  
-* "skills" 字段指向目录而非文件：这是因为 Skills 通常包含辅助脚本（如 scripts/ 目录下的 bash 脚本），指向目录允许 Claude 自动发现相关的资源文件 25。
+* "skills" 字段指向目录而非文件：这是因为 Skills 通常包含辅助脚本（如 scripts/ 目录下的 bash 脚本），指向目录允许 Claude 自动发现相关的资源文件 25。  
+* 所有路径均使用以 `./` 开头的相对路径，以符合 Plugins reference 中对路径约定的要求 13。
 
 ### **4.3 编排技能定义 (SKILL.md)**
 
-这是系统的“大脑”，负责指挥底层 CLI 工具。根据 5 和 25 的规范，SKILL.md 必须包含 Frontmatter 和详细的指令主体。
+这是系统的“大脑”，负责指挥底层 CLI 工具。根据 5 和 25 的规范，SKILL.md 必须包含 YAML Frontmatter（至少包含 name 和 description）和详细的指令主体。
 
 **文件路径：** skills/council-orchestrator/SKILL.md
 
----
+YAML
 
-## **name: council-orchestrator description: 协调 OpenAI、Gemini 和 Claude 模型进行多方会谈。负责解析用户查询，并行调用外部 CLI 工具，管理同行评审流程，并最终委托主席子代理生成报告。 license: MIT version: 1.0.0**
+---  
+name: council-orchestrator  
+description: 协调 OpenAI、Gemini 和 Claude 模型进行多方会谈。负责解析用户查询，并行调用外部 CLI 工具，管理同行评审流程，并最终委托主席子代理生成报告。  
+license: MIT  
+version: 1.0.0  
+---  
 
 # **Council Orchestration Protocol**
 
@@ -201,38 +204,29 @@ JSON
 
 为了实现“无头（Headless）”自动化调用，我们必须对三个特定的 CLI 工具进行脚本封装。这些脚本需要处理参数传递、模型指定以及输出格式化。
 
-### **5.1 OpenAI / Codex CLI (GPT-5.1) 集成**
+### **5.1 OpenAI / Codex CLI 集成**
 
-根据 OpenAI Codex 的文档 7，Codex CLI 支持通过自然语言指令操作代码库，且最新版本集成了 GPT-5 系列模型。
+根据 OpenAI Codex 的文档 7，Codex CLI 支持通过自然语言指令操作代码库，并提供 `codex exec` 非交互模式用于脚本化集成。
 
 **脚本路径：** skills/council-orchestrator/scripts/query\_codex.sh
 
 Bash
 
 \#\!/bin/bash  
-\# OpenAI Codex CLI Wrapper targeting GPT-5.1  
+\# OpenAI Codex CLI Wrapper (non-interactive)  
 \# 依赖: @openai/codex (npm install \-g @openai/codex)
 
 PROMPT="$1"
 
-\# 使用 'codex exec' 或类似命令进行非交互式调用  
-\# 根据  的 CLI 预览，'/init' 等命令是交互式的，  
-\# 但对于自动化，我们假设存在类似 'exec' 或管道模式。  
-\# GPT-5.1 是用户指定的模型版本。
+\# 使用 'codex exec' 提供的非交互模式。模型与项目配置从 Codex 的配置文件中读取，  
+\# 具体参数以 openai/codex 仓库中的 docs/exec.md 为准，这里不在脚本中硬编码模型 ID。
 
-codex exec \\  
-  \--model "gpt-5.1" \\  
-  \--reasoning-effort "high" \\  
-  \--instruction "$PROMPT" \\  
-  \--output-format "text" 2\>/dev/null
-
-\# 注意：'--reasoning-effort' 参数参考了近期推理模型的配置趋势  
-\# 2\>/dev/null 用于屏蔽加载动画或进度条等 stderr 输出
+printf '%s\n' "$PROMPT" | codex exec 2\>/dev/null
 
 **集成难点与应对：**
 
-* **交互式默认行为**：大多数 AI CLI 默认倾向于交互式会话（Chat REPL）。我们必须通过标志位（Flags）强制其进入“单次执行”模式。如果官方 CLI 不支持，可能需要使用 expect 脚本进行自动化交互 29，但首选方案是寻找类似 \--instruction 或直接参数传递的支持。  
-* **模型版本**：gpt-5.1 是未来预测版本。封装脚本的好处在于，当实际版本号变更时，只需修改脚本，无需更新整个 Plugin 逻辑。
+* **交互式默认行为**：大多数 AI CLI 默认倾向于交互式会话（Chat REPL）。Codex 提供了专门的 `codex exec` 子命令用于非交互场景 7，应优先使用而不是依赖复杂的 expect 脚本 29。  
+* **模型配置**：Codex 的模型与项目配置推荐通过配置文件或环境变量完成，而非硬编码在脚本参数中。这样在模型版本升级时，只需调整 Codex 配置即可。
 
 ### **5.2 Gemini CLI (Gemini 3 Pro Preview) 集成**
 
@@ -252,18 +246,14 @@ PROMPT="$1"
 \#  确认了 \-p 参数和 \--output-format json
 
 gemini \\  
-  \--prompt "$PROMPT" \\  
-  \--model "gemini-3-pro-preview" \\  
+  \-p "$PROMPT" \\  
   \--output-format "json" \\  
-  \--no-stream \\
-
 | jq \-r '.content'
 
 \# 使用 jq 解析 JSON 输出，确保传递给下游的是纯文本  
-\# \--no-stream 禁用流式输出，确保完整响应一次性返回
 
 技术洞察：  
-利用 \--output-format json 8 能够有效避免 Markdown 代码块标记（如 \`\`\`json）被错误地包含在输出文本中，这在多模型管道中是一个常见的“幻觉”源头。jq 的使用确保了数据的纯净性。
+利用 \--output-format json 8 能够有效避免 Markdown 代码块标记（如 \`\`\`json）被错误地包含在输出文本中，这在多模型管道中是一个常见的“幻觉”源头。jq 的使用确保了数据的纯净性。Gemini 3 Pro 在 CLI 中作为默认模型的启用，需要按照官方博客 9 中的说明在 CLI 内开启 Preview 功能，而不是依赖硬编码模型 ID。
 
 ### **5.3 Claude Code (Sonnet 4.5) 的递归调用**
 
@@ -279,20 +269,14 @@ Bash
 
 PROMPT="$1"
 
-\# \[11, 31\] 确认了 \-p (print) 标志用于无头模式
+\# \[11, 31\] 说明了 \-p / \--print 标志用于无头模式，\--output-format 控制输出格式
 
 claude \\  
   \-p "$PROMPT" \\  
-  \--model "claude-sonnet-4.5" \\  
-  \--print \\  
-  \--no-history \\  
-  \--verbose=false
-
-\# \--no-history (假设存在) 或类似机制至关重要，  
-\# 防止子进程读取主进程生成的临时文件，造成上下文混乱。
+  \--output-format "text"
 
 风险管理：  
-递归调用最大的风险是上下文污染。如果子 Claude 进程启动时自动读取了当前目录下的 .council/ 文件夹（其中包含它自己即将生成的输出文件），可能会导致逻辑崩溃。因此，在脚本中应尽可能通过环境变量或参数禁用自动上下文加载，或者在一个空的临时目录中执行该命令。
+递归调用最大的风险是上下文污染。如果子 Claude 进程启动时自动读取了当前目录下的 .council/ 文件夹（其中包含它自己即将生成的输出文件），可能会导致逻辑混乱。实践中应将子进程的工作目录指向一个隔离的临时目录，或通过插件配置限制子代理可访问的目录与工具集合 11、12，而不是依赖尚未在官方文档中出现的自定义 CLI 标志。
 
 ---
 
@@ -373,17 +357,17 @@ skills:
 
 ### **7.2 生命周期钩子与安全防护**
 
-hooks/lifecycle.json 允许我们在特定事件发生时介入 13。
+hooks/hooks.json 允许我们在特定事件发生时介入 13。
 
 JSON
 
 {  
   "hooks": {  
-    "PreToolUse":  
-      }  
+    "PreToolUse": \[  
+      { "command": "./hooks/pre-tool.sh" }  
     \],  
-    "PostToolUse":  
-      }  
+    "PostToolUse": \[  
+      { "command": "./hooks/post-tool.sh" }  
     \]  
   }  
 }
@@ -433,6 +417,13 @@ wait
 这一架构不仅复现了原项目的民主化决策机制，更将其提升为一个可扩展的协议。未来，开发者可以轻松地在 plugin.json 中添加新的 CLI 工具（如 grok-cli 或本地开源模型 ollama），只需增加一个 Shell 封装脚本并更新 Skill 定义即可。这种开放性与灵活性，正是代理式编程（Agentic Coding）的核心魅力所在。
 
 ---
+
+## **10\. 实作注意事项（Implementation Notes）**
+
+- **从最小可用插件开始**：先只实现 `.claude-plugin/plugin.json`、一个简单的 `/council` 命令和 `council-orchestrator` Skill，先不接入所有 CLI，验证插件被 Claude Code 正确加载（命令可见、Skill 能被触发）。  
+- **逐个验证 CLI 包装脚本**：在终端中单独运行 `query_codex.sh`、`query_gemini.sh`、`query_claude.sh`，使用极简 Prompt（例如 `"ping"`）确认非交互模式输出正常，再在 Skill 中串联三者，避免一次性调试多条链路。  
+- **显式做依赖检查与错误回退**：在 SKILL.md 的前置步骤中使用 `command -v codex` / `command -v gemini` / `command -v claude` 检查依赖并给出友好的安装提示，而不要假设这些 CLI 一定存在；同时在 `.council/` 输出文件缺失或为空时，明确在最终报告中标注对应成员“缺席”。  
+- **优先对齐官方 CLI/Docs**：每次升级 Codex、Gemini CLI 或 Claude CLI 前，先对照各自 README 与 Headless/CLI reference，检查是否有参数变更或废弃，尽量避免在脚本中硬编码模型 ID 或使用未在文档中出现的 flag。
 
 参考文献支持：  
 1 (llm-council 原始逻辑)2 (环境依赖问题)15 (LLM-as-a-Judge 理论)6 (上下文污染)12 (子代理特性)4 (仓库结构)10 (Claude 模型版本)3 (Claude Code 能力)17 (CLI 权限)27 (Codex SDK)7 (Codex CLI)8 (Gemini CLI)21 (Token 效率)5 (Skills 原理)8 (Gemini 功能)9 (Gemini 3 Pro)11 (Claude Headless)24 (Hooks)23 (Slash Commands)13 (Plugin Schema)14 (Marketplaces)12 (Sub-agent Config)13 (Manifest 字段)5 (Frontmatter 规范)14 (Strict Mode).
