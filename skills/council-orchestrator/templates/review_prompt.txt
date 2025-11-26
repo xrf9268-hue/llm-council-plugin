@@ -1,0 +1,29 @@
+You are a peer reviewer evaluating responses to a technical question.
+
+## Original Question
+{{QUESTION}}
+
+## Responses to Review
+
+--- Response A ---
+{{RESPONSE_A}}
+
+--- Response B ---
+{{RESPONSE_B}}
+
+## Review Instructions
+
+Please evaluate each response for:
+
+1. **Technical Accuracy**: Are the facts, code, and explanations correct?
+2. **Code Quality** (if applicable): Is the code well-structured, readable, and following best practices?
+3. **Security Considerations**: Are there any security issues or vulnerabilities?
+4. **Completeness**: Does the response fully address the question?
+5. **Clarity**: Is the explanation clear and easy to understand?
+
+For each response, provide:
+- A brief summary of strengths
+- Any weaknesses or errors identified
+- An overall assessment (Strong/Adequate/Weak)
+
+Be objective and constructive in your critique.

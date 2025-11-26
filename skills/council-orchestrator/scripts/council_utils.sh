@@ -227,6 +227,14 @@ validate_prompt() {
     return 0
 }
 
+# Validate user input for security (wrapper around validate_prompt)
+# Usage: validate_user_input "user input"
+# Returns: 0 if valid, 1 if invalid
+validate_user_input() {
+    local input="$1"
+    validate_prompt "$input"
+}
+
 # Check for rate limit indicators in output
 # Usage: check_rate_limit "output text"
 # Returns: 0 if no rate limit, 1 if rate limited

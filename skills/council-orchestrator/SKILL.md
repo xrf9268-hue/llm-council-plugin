@@ -1,336 +1,299 @@
 ---
 name: council-orchestrator
-description: Orchestrates multi-model deliberation by coordinating OpenAI Codex, Google Gemini, and Claude CLIs. Manages the three-phase consensus protocol including opinion collection, peer review, and chairman synthesis.
-license: MIT
-version: 1.0.0
+description: Orchestrates multi-model LLM consensus through a three-phase deliberation protocol. Use when you need collaborative AI review, multi-model problem-solving, code review from multiple perspectives, or consensus-based decision making. Coordinates OpenAI Codex, Google Gemini, and Claude CLIs for opinion collection, peer review, and chairman synthesis.
 ---
 
 # Council Orchestration Protocol
 
 ## Overview
 
-This skill defines the Standard Operating Procedure (SOP) for the LLM Council. You act as the Coordinator - you do not generate answers directly, but orchestrate external CLI tools to gather and synthesize responses.
+Three-phase consensus protocol coordinating multiple LLMs for collaborative decision-making.
 
-## Prerequisites Check
+**Architecture:**
+- **Phase 1**: Parallel opinion collection from available LLMs
+- **Phase 2**: Cross-examination peer review
+- **Phase 3**: Chairman synthesis of consensus
 
-Before executing any operation, verify the following CLI tools are available:
+**Council Members:**
+- Claude CLI (required minimum)
+- OpenAI Codex CLI (optional, enhances consensus)
+- Google Gemini CLI (optional, enhances consensus)
 
-1. `claude` (Claude Code CLI) - **Required**
-2. `codex` (OpenAI Codex CLI) - Optional
-3. `gemini` (Google Gemini CLI) - Optional
+## Quick Start
 
-### Dependency Check Script
+### Prerequisites Check
 
-Run the comprehensive check using the council utilities:
 ```bash
 source ./skills/council-orchestrator/scripts/council_utils.sh
 get_cli_status
 ```
 
-Or individually:
-```bash
-command -v claude && echo "claude: available" || echo "claude: MISSING - see https://claude.ai/code"
-command -v codex && echo "codex: available" || echo "codex: MISSING - install with: npm install -g @openai/codex"
-command -v gemini && echo "gemini: available" || echo "gemini: MISSING - install with: npm install -g @google/gemini-cli"
-```
+**Quorum Requirements:**
+- **Minimum**: 1 CLI (Claude) - single-model mode for testing
+- **Recommended**: 2+ CLIs - enables peer review and synthesis
+- **Optimal**: All 3 CLIs - full consensus protocol
 
-### Quorum Requirements
+See [detailed prerequisites](./REFERENCE.md#prerequisites) for CLI installation.
 
-- **Minimum**: At least 1 CLI (Claude) required
-- **Single-model mode**: Only Claude available - useful for testing
-- **Reduced council**: 2 of 3 CLIs available - council can proceed with degraded coverage
-- **Full council**: All 3 CLIs available - optimal consensus mechanism
-
-If Claude CLI is missing, the council cannot proceed. For Codex and Gemini, if missing, proceed with available members and mark absent members in the final report.
+---
 
 ## Execution Flow
 
-### Phase 1: Opinion Collection (Parallel Execution)
+### Phase 1: Opinion Collection
 
-1. **Parse Input**: Extract the core technical question from the user's prompt.
-
-2. **Initialize Working Directory**:
-   ```bash
-   source ./skills/council-orchestrator/scripts/council_utils.sh
-   council_init
-   ```
-
-3. **Check Available CLIs**: Determine which council members are available:
-   ```bash
-   CLAUDE_AVAILABLE=$(command -v claude &>/dev/null && echo "yes" || echo "no")
-   CODEX_AVAILABLE=$(command -v codex &>/dev/null && echo "yes" || echo "no")
-   GEMINI_AVAILABLE=$(command -v gemini &>/dev/null && echo "yes" || echo "no")
-   MEMBER_COUNT=$(count_available_members)
-
-   progress_msg "Available council members: $MEMBER_COUNT"
-   ```
-
-4. **Invoke Available Members**: Execute available CLI wrappers in parallel:
-
-   **Single-Model Mode (Claude only)**:
-   If only Claude is available, run in single-model mode for testing:
-   ```bash
-   progress_msg "Single-model mode: Consulting Claude..."
-   ./skills/council-orchestrator/scripts/query_claude.sh "{query}" > .council/stage1_claude.txt 2>&1
-   ```
-
-   **Full Council Mode (2+ members)**:
-   Execute all available CLI wrappers in parallel using background jobs:
-   ```bash
-   progress_msg "Full council mode: Consulting all available members in parallel..."
-
-   # Track PIDs for wait
-   PIDS=()
-
-   # Launch Claude (required)
-   if [[ "$CLAUDE_AVAILABLE" == "yes" ]]; then
-       progress_msg "Consulting Claude..."
-       ./skills/council-orchestrator/scripts/query_claude.sh "{query}" > .council/stage1_claude.txt 2>&1 &
-       PIDS+=($!)
-   fi
-
-   # Launch Codex (optional)
-   if [[ "$CODEX_AVAILABLE" == "yes" ]]; then
-       progress_msg "Consulting OpenAI Codex..."
-       ./skills/council-orchestrator/scripts/query_codex.sh "{query}" > .council/stage1_openai.txt 2>&1 &
-       PIDS+=($!)
-   fi
-
-   # Launch Gemini (optional)
-   if [[ "$GEMINI_AVAILABLE" == "yes" ]]; then
-       progress_msg "Consulting Google Gemini..."
-       ./skills/council-orchestrator/scripts/query_gemini.sh "{query}" > .council/stage1_gemini.txt 2>&1 &
-       PIDS+=($!)
-   fi
-
-   # Wait for all background jobs to complete
-   for pid in "${PIDS[@]}"; do
-       wait "$pid" || true  # Continue even if one fails
-   done
-
-   progress_msg "All council members have responded."
-   ```
-
-5. **Validate Outputs**: Check that output files are non-empty using utility functions:
-   ```bash
-   ABSENT_MEMBERS=()
-
-   validate_output ".council/stage1_claude.txt" "Claude" || ABSENT_MEMBERS+=("Claude")
-   [[ "$CODEX_AVAILABLE" == "yes" ]] && validate_output ".council/stage1_openai.txt" "Codex" || ABSENT_MEMBERS+=("Codex")
-   [[ "$GEMINI_AVAILABLE" == "yes" ]] && validate_output ".council/stage1_gemini.txt" "Gemini" || ABSENT_MEMBERS+=("Gemini")
-
-   if [[ ${#ABSENT_MEMBERS[@]} -gt 0 ]]; then
-       echo "Absent members: ${ABSENT_MEMBERS[*]}" >&2
-   fi
-   ```
-
-### Phase 2: Peer Review (Cross-Examination)
-
-**Quick Start**: Use the `run_peer_review.sh` script:
+**Quick Start:**
 ```bash
-./skills/council-orchestrator/scripts/run_peer_review.sh "{original_question}" .council
+# Initialize working directory
+council_init
+
+# Validate user input (security)
+validate_user_input "$user_query" || exit 1
+
+# Execute parallel opinion collection
+./skills/council-orchestrator/scripts/run_parallel.sh "$query" .council
 ```
 
-This script handles all peer review orchestration automatically. Below is the detailed flow for reference.
+**What it does:**
+- Consults all available LLMs in parallel
+- Captures opinions to `.council/stage1_*.txt`
+- Validates outputs and marks absent members
+- Checks quorum for proceeding
 
-#### 2.1 Read Stage 1 Outputs
+**Output Files:**
+- `.council/stage1_claude.txt` (required)
+- `.council/stage1_openai.txt` (if Codex available)
+- `.council/stage1_gemini.txt` (if Gemini available)
 
-Load all available response files:
+**Manual Execution:** See [Phase 1 detailed guide](./REFERENCE.md#phase-1-opinion-collection)
+
+---
+
+### Phase 2: Peer Review
+
+**Quick Start:**
 ```bash
-CLAUDE_RESPONSE=""
-CODEX_RESPONSE=""
-GEMINI_RESPONSE=""
-
-[[ -s ".council/stage1_claude.txt" ]] && CLAUDE_RESPONSE=$(cat .council/stage1_claude.txt)
-[[ -s ".council/stage1_openai.txt" ]] && CODEX_RESPONSE=$(cat .council/stage1_openai.txt)
-[[ -s ".council/stage1_gemini.txt" ]] && GEMINI_RESPONSE=$(cat .council/stage1_gemini.txt)
+./skills/council-orchestrator/scripts/run_peer_review.sh "$original_question" .council
 ```
 
-**Quorum Check**: At least 2 Stage 1 responses are required for meaningful peer review.
+**What it does:**
+- Each LLM reviews peers' responses anonymously
+- Uses structured review template from `templates/review_prompt.txt`
+- Executes reviews in parallel
+- Outputs to `.council/stage2_review_*.txt`
 
-#### 2.2 Construct Anonymized Review Prompts
+**Cross-Review Matrix:**
 
-For each reviewer, create a prompt containing:
-- The original user question
-- Anonymized responses from other models (labeled "Response A", "Response B")
-- Standardized review criteria
-
-**Review Prompt Template**:
-```
-You are a peer reviewer evaluating responses to a technical question.
-
-## Original Question
-{original_question}
-
-## Responses to Review
-
---- Response A ---
-{response_a}
-
---- Response B ---
-{response_b}
-
-## Review Instructions
-
-Please evaluate each response for:
-
-1. **Technical Accuracy**: Are the facts, code, and explanations correct?
-2. **Code Quality** (if applicable): Is the code well-structured, readable, and following best practices?
-3. **Security Considerations**: Are there any security issues or vulnerabilities?
-4. **Completeness**: Does the response fully address the question?
-5. **Clarity**: Is the explanation clear and easy to understand?
-
-For each response, provide:
-- A brief summary of strengths
-- Any weaknesses or errors identified
-- An overall assessment (Strong/Adequate/Weak)
-
-Be objective and constructive in your critique.
-```
-
-**Cross-Review Matrix**:
 | Reviewer | Reviews |
 |----------|---------|
 | Claude   | Codex (A) + Gemini (B) |
 | Codex    | Claude (A) + Gemini (B) |
 | Gemini   | Claude (A) + Codex (B) |
 
-#### 2.3 Execute Reviews in Parallel
+**Output Files:**
+- `.council/stage2_review_claude.txt`
+- `.council/stage2_review_openai.txt`
+- `.council/stage2_review_gemini.txt`
 
-Run each available CLI with their review prompts:
-```bash
-progress_msg "Starting peer review phase..."
-PIDS=""
+**Manual Execution:** See [Phase 2 detailed guide](./REFERENCE.md#phase-2-peer-review)
 
-# Claude reviews Codex + Gemini responses
-if [[ "$CLAUDE_AVAILABLE" == "yes" && ( -n "$CODEX_RESPONSE" || -n "$GEMINI_RESPONSE" ) ]]; then
-    progress_msg "Claude reviewing peer responses..."
-    ./skills/council-orchestrator/scripts/query_claude.sh "{review_prompt}" > .council/stage2_review_claude.txt 2>&1 &
-    PID_CLAUDE=$!
-    PIDS="$PIDS $PID_CLAUDE"
-fi
-
-# Codex reviews Claude + Gemini responses
-if [[ "$CODEX_AVAILABLE" == "yes" && ( -n "$CLAUDE_RESPONSE" || -n "$GEMINI_RESPONSE" ) ]]; then
-    progress_msg "Codex reviewing peer responses..."
-    ./skills/council-orchestrator/scripts/query_codex.sh "{review_prompt}" > .council/stage2_review_openai.txt 2>&1 &
-    PID_CODEX=$!
-    PIDS="$PIDS $PID_CODEX"
-fi
-
-# Gemini reviews Claude + Codex responses
-if [[ "$GEMINI_AVAILABLE" == "yes" && ( -n "$CLAUDE_RESPONSE" || -n "$CODEX_RESPONSE" ) ]]; then
-    progress_msg "Gemini reviewing peer responses..."
-    ./skills/council-orchestrator/scripts/query_gemini.sh "{review_prompt}" > .council/stage2_review_gemini.txt 2>&1 &
-    PID_GEMINI=$!
-    PIDS="$PIDS $PID_GEMINI"
-fi
-
-# Wait for all reviews to complete
-for pid in $PIDS; do
-    wait "$pid" || true
-done
-
-progress_msg "Peer review phase complete."
-```
-
-#### 2.4 Validate Review Outputs
-
-Ensure reviews were captured:
-```bash
-validate_output ".council/stage2_review_claude.txt" "Claude Review" || true
-validate_output ".council/stage2_review_openai.txt" "Codex Review" || true
-validate_output ".council/stage2_review_gemini.txt" "Gemini Review" || true
-```
-
-**Output Files**:
-- `.council/stage2_review_claude.txt` - Claude's review of Codex + Gemini
-- `.council/stage2_review_openai.txt` - Codex's review of Claude + Gemini
-- `.council/stage2_review_gemini.txt` - Gemini's review of Claude + Codex
+---
 
 ### Phase 3: Chairman Synthesis
 
-**Quick Start**: Use the `run_chairman.sh` script to generate the chairman invocation prompt:
+**Quick Start:**
 ```bash
-./skills/council-orchestrator/scripts/run_chairman.sh "{original_question}" .council
+# Generate chairman invocation prompt
+CHAIRMAN_PROMPT=$(./skills/council-orchestrator/scripts/run_chairman.sh \
+    "$original_question" \
+    .council)
+
+# Invoke chairman sub-agent
+# Use Task tool: council-chairman agent
 ```
 
-This script validates Stage 1/2 files and outputs a formatted prompt for the chairman.
-
-#### 3.1 Generate Chairman Prompt
-
-Run the chairman preparation script:
-```bash
-CHAIRMAN_PROMPT=$(./skills/council-orchestrator/scripts/run_chairman.sh "{original_question}" .council)
-```
-
-The script will:
-- Validate that Stage 1 response files exist
-- Identify available Stage 2 peer review files
-- Generate a structured context summary for the chairman
-- Output a complete prompt for the sub-agent
-
-#### 3.2 Invoke Chairman Sub-agent
-
-Invoke the `council-chairman` sub-agent with the generated prompt:
-
+**Prompt for Chairman:**
 ```
 Use the council-chairman agent to synthesize the council's responses.
 
 $CHAIRMAN_PROMPT
 ```
 
-The chairman sub-agent will:
-1. Read all Stage 1 response files from `.council/`
-2. Read all Stage 2 peer review files from `.council/`
-3. Analyze for consensus and disagreements
-4. Generate a comprehensive verdict report
-5. Write the final report to `.council/final_report.md`
-
-#### 3.3 Context Isolation
-
-**Important**: The chairman sub-agent operates in an isolated context:
-- It has access ONLY to Read and Write tools
-- It cannot invoke external CLIs (claude, codex, gemini)
-- It processes data independently from the main session
-- The main session only receives the final report
-
-#### 3.4 Retrieve Final Report
-
-After the chairman completes, read the final report:
+**After chairman completes:**
 ```bash
-if [[ -s ".council/final_report.md" ]]; then
-    cat .council/final_report.md
-else
-    error_msg "Chairman failed to generate report"
-fi
-```
+# Retrieve final report
+cat .council/final_report.md
 
-#### 3.5 Cleanup
-
-After retrieving the report, clean up the working directory:
-```bash
-source ./skills/council-orchestrator/scripts/council_utils.sh
+# Cleanup
 council_cleanup
 ```
 
-Or manually:
-```bash
-rm -rf .council
-```
+**What it does:**
+- Chairman agent reads all Stage 1/2 files
+- Analyzes for consensus and disagreements
+- Generates comprehensive verdict report
+- Writes to `.council/final_report.md`
 
-**Note**: The cleanup step removes all intermediate files. Ensure you've captured or presented the final report to the user before cleanup.
+**Context Isolation:**
+- Chairman operates in isolated context
+- Only has Read/Write tools (no Bash, no external CLIs)
+- Ensures unbiased synthesis based solely on files
+
+**Manual Execution:** See [Phase 3 detailed guide](./REFERENCE.md#phase-3-chairman-synthesis)
+
+---
 
 ## Error Handling
 
-- **Rate Limit (429)**: Implement exponential backoff, retry once after 5 seconds.
-- **CLI Execution Error (non-zero exit)**: Mark the member as "absent" in the final report.
-- **Empty Output**: Treat as execution failure, mark member absent.
-- **Timeout**: If a CLI doesn't respond within 60 seconds, terminate and mark absent.
+| Error | Handling | Details |
+|-------|----------|---------|
+| **CLI missing** | Proceed with available members | See [quorum requirements](./REFERENCE.md#quorum-requirements) |
+| **Rate limit (429)** | Exponential backoff, retry once | [Rate limit handling](./REFERENCE.md#rate-limiting-http-429) |
+| **Empty output** | Mark member absent in report | [Empty output handling](./REFERENCE.md#empty-output) |
+| **Timeout (>60s)** | Terminate, mark absent | [Timeout configuration](./REFERENCE.md#timeout-60-seconds) |
+| **Quorum failure** | Abort council session | [Quorum check](./REFERENCE.md#quorum-failure) |
+
+**Graceful Degradation:**
+- Council proceeds with available members (minimum 1 required)
+- Absent members are noted in final report
+- Peer review skipped if <2 responses
+- Single-model mode if only Claude available
+
+---
+
+## Security Best Practices
+
+⚠️ **Important**: This skill executes external CLI tools with user-provided input. Follow security guidelines to prevent command injection and ensure safe operation.
+
+### Key Security Measures
+
+- **Input Validation**: All user queries validated before passing to external CLIs
+- **CLI Verification**: Ensure external CLIs (codex, gemini, claude) are from trusted sources
+- **Temporary Files**: All data in `.council/` automatically cleaned up after synthesis
+- **Proper Quoting**: All bash scripts use proper variable quoting to prevent injection
+
+### Usage
+
+```bash
+# Always validate user input before processing
+source ./skills/council-orchestrator/scripts/council_utils.sh
+validate_user_input "$user_query" || {
+    error_msg "Invalid input - aborting for security"
+    exit 1
+}
+```
+
+### Detailed Security Information
+
+For comprehensive security guidance including:
+- Input sanitization patterns
+- CLI authenticity verification
+- Threat model and mitigations
+- Security audit checklist
+
+See [`SECURITY.md`](./SECURITY.md)
+
+---
 
 ## Output Format
 
-The final output should be the Chairman's Markdown report, containing:
-- Executive Summary
-- Council Debate Summary (table of divergences)
-- Final Synthesized Recommendation
+The final output is the Chairman's Markdown report containing:
+
+### Report Structure
+
+1. **Executive Summary**
+   - Concise answer to original question
+   - Key consensus points
+   - Critical recommendations
+
+2. **Council Debate Summary**
+   - Table of significant divergences
+   - Resolution of disagreements
+   - Attribution to specific models
+
+3. **Detailed Analysis**
+   - Technical accuracy synthesis
+   - Code quality assessment (if applicable)
+   - Security considerations
+   - Alternative approaches
+
+4. **Final Recommendation**
+   - Synthesized best practice
+   - Implementation guidance
+   - Caveats and edge cases
+
+5. **Participation Notes** (if applicable)
+   - Absent members
+   - Degraded council mode notice
+
+---
+
+## Additional Resources
+
+### Documentation
+
+- **[REFERENCE.md](./REFERENCE.md)** - Detailed bash implementation and manual execution guide
+- **[EXAMPLES.md](./EXAMPLES.md)** - Usage scenarios, troubleshooting, and integration examples
+- **[SECURITY.md](./SECURITY.md)** - Security best practices and threat mitigation
+- **[METADATA.md](./METADATA.md)** - Version history, compatibility, and licensing
+
+### Templates
+
+- **[templates/review_prompt.txt](./templates/review_prompt.txt)** - Peer review prompt template
+- **[templates/chairman_prompt.txt](./templates/chairman_prompt.txt)** - Chairman invocation template
+
+### Scripts
+
+- **scripts/council_utils.sh** - Shared utility functions
+- **scripts/run_parallel.sh** - Automated Phase 1 execution
+- **scripts/run_peer_review.sh** - Automated Phase 2 execution
+- **scripts/run_chairman.sh** - Chairman prompt generation
+- **scripts/query_claude.sh** - Claude CLI wrapper
+- **scripts/query_codex.sh** - Codex CLI wrapper
+- **scripts/query_gemini.sh** - Gemini CLI wrapper
+
+---
+
+## Common Usage Patterns
+
+### Full Automated Run
+```bash
+source ./skills/council-orchestrator/scripts/council_utils.sh
+
+# Phase 1
+council_init
+validate_user_input "$query" || exit 1
+./skills/council-orchestrator/scripts/run_parallel.sh "$query" .council
+
+# Phase 2
+./skills/council-orchestrator/scripts/run_peer_review.sh "$query" .council
+
+# Phase 3
+CHAIRMAN_PROMPT=$(./skills/council-orchestrator/scripts/run_chairman.sh "$query" .council)
+# [Invoke chairman agent with $CHAIRMAN_PROMPT]
+
+# Output
+cat .council/final_report.md
+council_cleanup
+```
+
+### Check Council Status
+```bash
+source ./skills/council-orchestrator/scripts/council_utils.sh
+get_cli_status
+count_available_members
+can_council_proceed && echo "Council ready" || echo "Install more CLIs"
+```
+
+### Configuration Management
+```bash
+# View current config
+config_list
+
+# Set custom quorum
+config_set "min_quorum" "3"
+
+# Enable only specific members
+config_set "enabled_members" "claude,gemini"
+```
+
+For more examples see [EXAMPLES.md](./EXAMPLES.md)

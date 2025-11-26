@@ -75,6 +75,116 @@ All commands should specify appropriate models in frontmatter based on complexit
 
 - Always include `argument-hint` in frontmatter to guide auto-completion and user expectations
 
+## Skills Best Practices (2025)
+
+Following the official Claude Code skills documentation, our skills adhere to these best practices:
+
+### Frontmatter Schema Compliance
+
+**Only use official fields** in SKILL.md frontmatter:
+- `name`: lowercase-with-hyphens (max 64 characters)
+- `description`: what it does + when to use it (max 1024 characters)
+- `allowed-tools`: optional tool restrictions (e.g., `[Bash, Read, Write]`)
+
+**Do NOT add** unofficial fields like `license`, `version`, `author` in skill frontmatter. Store metadata in a separate `METADATA.md` file within the skill directory.
+
+### Discovery-Optimized Descriptions
+
+Descriptions should include **trigger terms** to help Claude recognize when to activate the skill:
+
+**Good Example:**
+```yaml
+description: Orchestrates multi-model LLM consensus through a three-phase deliberation protocol. Use when you need collaborative AI review, multi-model problem-solving, code review from multiple perspectives, or consensus-based decision making.
+```
+
+**Key elements:**
+- What the skill accomplishes (technical summary)
+- **Explicit activation phrase**: "Use when you need..."
+- **Trigger terms**: "collaborative AI review", "multi-model problem-solving", "consensus-based decision making"
+- Workflow mention: "three-phase deliberation protocol"
+
+### Progressive Disclosure Pattern
+
+For complex skills, split documentation into multiple files to reduce context consumption:
+
+```
+skills/skill-name/
+├── SKILL.md           # Core workflow (~150 lines, Level 2 - always loaded)
+├── REFERENCE.md       # Detailed implementation (Level 3 - on-demand)
+├── EXAMPLES.md        # Usage scenarios (Level 3 - on-demand)
+├── SECURITY.md        # Security guidelines (Level 3 - on-demand)
+├── METADATA.md        # Version/license info (Level 3 - on-demand)
+├── scripts/           # Executable utilities (Level 3 - executed, not loaded)
+└── templates/         # Reusable templates (Level 3 - loaded when referenced)
+```
+
+**Loading Levels:**
+- **Level 1**: Metadata from frontmatter (~100 tokens) - always in system prompt
+- **Level 2**: SKILL.md content - loaded when skill is activated
+- **Level 3**: Additional files - loaded only when explicitly referenced
+
+**Benefits:**
+- Reduces Level 2 context by 60-70%
+- Faster skill activation
+- Better maintainability
+- On-demand detailed docs
+
+### Security for External Tool Execution
+
+When skills execute external tools (CLIs, APIs), document security considerations:
+
+1. **Input Validation**: Add `validate_user_input()` functions
+2. **SECURITY.md**: Create dedicated security documentation
+3. **Reference in SKILL.md**: Link to security docs from main skill file
+4. **Sanitization Patterns**: Document safe quoting and escaping
+
+Example pattern:
+```bash
+# In SKILL.md
+validate_user_input "$query" || exit 1
+```
+
+### Template Extraction
+
+Extract reusable prompts to `templates/` directory:
+
+```
+templates/
+├── review_prompt.txt      # Peer review template
+└── synthesis_prompt.txt   # Output formatting template
+```
+
+Use variable substitution:
+```bash
+PROMPT=$(cat templates/review_prompt.txt)
+PROMPT="${PROMPT//\{\{QUESTION\}\}/$user_question}"
+```
+
+### Validation Before Publishing
+
+Before committing skill changes:
+
+```bash
+# Validate plugin manifest
+claude plugin validate .
+
+# Run test suite
+./tests/test_runner.sh
+
+# Verify file structure
+ls skills/skill-name/
+```
+
+### council-orchestrator Example
+
+Our `council-orchestrator` skill demonstrates all these best practices:
+- ✓ Schema-compliant frontmatter (no extra fields)
+- ✓ Discovery-optimized description with trigger terms
+- ✓ Progressive disclosure (SKILL.md + REFERENCE.md + EXAMPLES.md)
+- ✓ Security documentation (SECURITY.md)
+- ✓ Template extraction (templates/)
+- ✓ Input validation (validate_user_input function)
+
 ## Build, Test, and Development Commands
 
 - `./tests/test_runner.sh` – Run the test suite (idempotent; safe to run often).

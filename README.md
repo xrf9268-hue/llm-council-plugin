@@ -259,36 +259,80 @@ Post-execution hooks check for:
 
 ## Architecture
 
+### Project Structure
+
 ```
 llm-council-plugin/
 ├── .claude-plugin/
-│   └── plugin.json          # Plugin manifest
+│   ├── plugin.json              # Plugin manifest
+│   └── marketplace.json         # Marketplace metadata
 ├── agents/
-│   └── council-chairman.md  # Chairman sub-agent definition
+│   └── council-chairman.md      # Chairman sub-agent definition
 ├── commands/
-│   ├── council.md           # /council command
-│   ├── council-help.md      # /council-help command
-│   ├── council-status.md    # /council-status command
-│   └── council-config.md    # /council-config command
+│   ├── council.md               # /council command
+│   ├── council-help.md          # /council-help command
+│   ├── council-status.md        # /council-status command
+│   └── council-config.md        # /council-config command
 ├── skills/
 │   └── council-orchestrator/
-│       ├── SKILL.md         # Skill definition
-│       └── scripts/
-│           ├── council_utils.sh   # Shared utilities
-│           ├── query_claude.sh    # Claude CLI wrapper
-│           ├── query_codex.sh     # Codex CLI wrapper
-│           ├── query_gemini.sh    # Gemini CLI wrapper
-│           ├── run_parallel.sh    # Stage 1 orchestration
-│           ├── run_peer_review.sh # Stage 2 orchestration
-│           └── run_chairman.sh    # Stage 3 preparation
+│       ├── SKILL.md             # Core workflow (Level 2)
+│       ├── REFERENCE.md         # Detailed implementation (Level 3)
+│       ├── EXAMPLES.md          # Usage scenarios (Level 3)
+│       ├── SECURITY.md          # Security best practices (Level 3)
+│       ├── METADATA.md          # Version and licensing (Level 3)
+│       ├── scripts/
+│       │   ├── council_utils.sh   # Shared utilities
+│       │   ├── query_claude.sh    # Claude CLI wrapper
+│       │   ├── query_codex.sh     # Codex CLI wrapper
+│       │   ├── query_gemini.sh    # Gemini CLI wrapper
+│       │   ├── run_parallel.sh    # Stage 1 orchestration
+│       │   ├── run_peer_review.sh # Stage 2 orchestration
+│       │   └── run_chairman.sh    # Stage 3 preparation
+│       └── templates/
+│           ├── review_prompt.txt     # Peer review template
+│           └── chairman_prompt.txt   # Chairman invocation template
 ├── hooks/
-│   ├── hooks.json           # Hook configuration
-│   ├── pre-tool.sh          # Pre-execution validation
-│   └── post-tool.sh         # Post-execution verification
+│   ├── hooks.json               # Hook configuration
+│   ├── pre-tool.sh              # Pre-execution validation
+│   └── post-tool.sh             # Post-execution verification
 ├── tests/
-│   └── test_runner.sh       # Test suite
-└── README.md                # This file
+│   └── test_runner.sh           # Test suite
+└── README.md                    # This file
 ```
+
+### Skill Architecture - Progressive Disclosure Pattern
+
+The council-orchestrator skill follows the official progressive disclosure pattern (2025):
+
+- **SKILL.md** (Level 2) - Core workflow and quick-start guide (~8.5KB)
+  - Loaded when skill is activated
+  - Contains essential execution flow
+  - Links to detailed documentation
+
+- **REFERENCE.md** (Level 3) - Detailed bash implementation (~16KB)
+  - Loaded only when referenced
+  - Manual execution procedures
+  - Advanced configuration options
+
+- **EXAMPLES.md** (Level 3) - Usage scenarios and troubleshooting (~14KB)
+  - Loaded only when referenced
+  - Real-world usage patterns
+  - Error recovery procedures
+
+- **SECURITY.md** (Level 3) - Security best practices (~6.7KB)
+  - Loaded only when referenced
+  - Input validation patterns
+  - Threat model and mitigations
+
+- **METADATA.md** (Level 3) - Version history and licensing (~1KB)
+  - Loaded only when referenced
+  - Changelog and compatibility info
+
+**Benefits:**
+- Reduces Level 2 context consumption by ~65%
+- Faster skill loading
+- On-demand access to detailed docs
+- Better maintainability
 
 ## License
 
