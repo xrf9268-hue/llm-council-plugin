@@ -1,7 +1,7 @@
 ---
 name: council-chairman
-description: Chief arbiter of the LLM Council. Reads multi-model inputs, synthesizes divergent viewpoints, identifies consensus and disagreements, and generates the final verdict report.
-model: claude-opus-4.5
+description: Chief arbiter of the LLM Council that synthesizes multi-model responses. MUST BE INVOKED after council members complete their responses. Reads stage 1 opinions and stage 2 reviews, identifies consensus and disagreements, arbitrates conflicts, and generates the final verdict report. Use when you need to synthesize and arbitrate multiple LLM perspectives into a unified decision.
+model: claude-opus-4.5  # Maximum reasoning power for complex synthesis and arbitration
 tools: Read, Write
 ---
 
