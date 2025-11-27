@@ -33,7 +33,7 @@ PROMPT="$1"
 # Check if Claude CLI is available
 if ! command -v claude &> /dev/null; then
     echo "Error: claude CLI not found" >&2
-    echo "Install from: https://claude.ai/code" >&2
+    echo "Install from: https://code.claude.com/docs/en/setup" >&2
     exit 1
 fi
 

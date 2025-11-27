@@ -22,7 +22,7 @@ This document provides detailed bash implementation guidance for the LLM Council
 #### Claude CLI
 ```bash
 # Installation varies by platform
-# See: https://claude.ai/code
+# See: https://code.claude.com/docs/en/setup
 command -v claude || echo "Install required"
 ```
 

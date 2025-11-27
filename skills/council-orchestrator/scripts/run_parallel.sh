@@ -42,7 +42,7 @@ council_progress 1 10
 # Ensure at least Claude is available
 if [[ "$CLAUDE_AVAILABLE" != "yes" ]]; then
     error_msg "Claude CLI is required but not available"
-    echo "Install from: https://claude.ai/code" >&2
+    echo "Install from: https://code.claude.com/docs/en/setup" >&2
     exit 1
 fi
 

@@ -43,7 +43,7 @@ You need at least one CLI installed. For full council functionality, install all
 
 | CLI | Installation | Required |
 |-----|--------------|----------|
-| Claude | [claude.ai/code](https://claude.ai/code) | Yes |
+| Claude | [code.claude.com](https://code.claude.com/docs/en/setup) | Yes |
 | Codex | `npm install -g @openai/codex` | No |
 | Gemini | `npm install -g @google/gemini-cli` | No |
 
@@ -254,7 +254,7 @@ Run the test suite:
 Install the Claude Code CLI:
 
 ```bash
-# Visit https://claude.ai/code for installation instructions
+# Visit https://code.claude.com/docs/en/setup for installation instructions
 ```
 
 #### "Quorum not met"

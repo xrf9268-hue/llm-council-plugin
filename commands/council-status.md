@@ -102,6 +102,6 @@ Previous Session:
 
 If any CLI is missing, provide installation instructions:
 
-- **Claude**: Visit https://claude.ai/code or run `npm install -g @anthropic-ai/claude-code`
+- **Claude**: Visit https://code.claude.com/docs/en/setup or run `npm install -g @anthropic-ai/claude-code`
 - **Codex**: Run `npm install -g @openai/codex`
 - **Gemini**: Run `npm install -g @google/gemini-cli`

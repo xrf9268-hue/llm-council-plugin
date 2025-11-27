@@ -340,7 +340,7 @@ Required: At least Claude CLI
 **Solution:**
 ```bash
 # Install Claude CLI
-# See: https://claude.ai/code
+# See: https://code.claude.com/docs/en/setup
 
 # Verify installation
 command -v claude || echo "Still not available"

@@ -8,7 +8,7 @@ This guide explains how to install the LLM Council plugin for Claude Code and ho
 
 - Claude Code installed and signed in (VS Code or JetBrains).
 - At least one CLI installed:
-  - **Required**: Claude CLI – see https://claude.ai/code
+  - **Required**: Claude CLI – see https://code.claude.com/docs/en/setup
   - **Optional**: `codex`, `gemini` for full multi-model council.
 - Public GitHub repository: `https://github.com/xrf9268-hue/llm-council-plugin.git`.
 
