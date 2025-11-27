@@ -227,10 +227,23 @@ All hooks must use structured JSON output per the official Claude Code hooks API
 }
 ```
 
+**SessionStart hooks** (session initialization):
+```json
+{
+  "hookSpecificOutput": {
+    "hookEventName": "SessionStart",
+    "additionalContext": "setup context for Claude"
+  },
+  "continue": true,
+  "systemMessage": "user-facing warning/info"
+}
+```
+
 **IMPORTANT**: The `hookSpecificOutput` wrapper is required by the official Claude Code hooks API. Hooks using the older simplified format (without `hookSpecificOutput`) will not work correctly and may cause "BLOCKED" errors even for legitimate operations.
 
 ### Exit Code Conventions
 
+- **SessionStart**: Exit 0 (always succeeds, cannot block session initialization)
 - **PreToolUse**: Exit 0 with JSON (allow), Exit 2 (block with error message)
 - **PostToolUse**: Exit 0 with JSON (continue with context), non-zero for logging only (non-blocking)
 
@@ -244,6 +257,14 @@ Our hooks implement **defense in depth** with these principles:
 4. **Validation Over Blocking** - PreToolUse validates inputs; PostToolUse provides intelligent context
 
 ### Hook Types and Responsibilities
+
+**SessionStart (`session-start.sh`)** - Initializes environment at session start:
+- Environment variable persistence via `CLAUDE_ENV_FILE` (**exclusive to SessionStart**)
+- Sets `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1` to prevent "Shell cwd was reset" messages
+- Council configuration defaults (COUNCIL_DIR, max lengths, etc.)
+- Dependency validation (bash, jq) - non-blocking warnings
+- Council script availability checks - non-blocking warnings
+- Runs once per session (on startup, resume, clear, compact)
 
 **PreToolUse (`pre-tool.sh`)** - Validates commands before execution:
 - Command length validation (configurable via `COUNCIL_MAX_COMMAND_LENGTH`, default: 50000)
@@ -267,19 +288,20 @@ Hooks use these environment variables for configuration:
 **Provided by Claude Code:**
 - `CLAUDE_PROJECT_DIR` - Project root path (always use for resolving relative paths)
 - `CLAUDE_PLUGIN_ROOT` - Plugin installation path
+- `CLAUDE_ENV_FILE` - File path to persist environment variables (**SessionStart hooks only**)
 
 **Plugin-specific (configurable):**
 - `COUNCIL_DIR` - Council session directory (default: `.council`)
 - `COUNCIL_MAX_COMMAND_LENGTH` - PreToolUse max command size (default: 50000)
 - `COUNCIL_MAX_OUTPUT_LENGTH` - PostToolUse output warning threshold (default: 500000)
+- `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR` - Set to `1` by SessionStart to prevent "Shell cwd was reset" messages
 
 ### Hook Development Guidelines
 
 **When to use hooks:**
-- Input validation before potentially dangerous operations
-- Security threat detection (injection, path traversal)
-- Post-execution analysis and intelligent context provision
-- Operational monitoring (rate limits, quotas, quorum)
+- **SessionStart**: Environment setup, dependency validation, persistent configuration
+- **PreToolUse**: Input validation before potentially dangerous operations, security threat detection
+- **PostToolUse**: Post-execution analysis and intelligent context provision, operational monitoring
 
 **What hooks should NOT do:**
 - ❌ Block legitimate shell operations (pipes, redirects, command chaining are required)
@@ -303,9 +325,10 @@ Hooks are tested as part of the plugin test suite:
 
 **Test coverage requirements:**
 - Integration tests (executable, config validation)
+- SessionStart tests (environment persistence, JSON schema, dependency handling)
 - PreToolUse tests (command length, validation, blocking behavior)
 - PostToolUse tests (detection patterns, JSON structure, context provision)
-- Edge cases (missing jq, timeouts, malformed input)
+- Edge cases (missing jq, timeouts, malformed input, missing CLAUDE_ENV_FILE)
 
 ### Configuration and Troubleshooting
 

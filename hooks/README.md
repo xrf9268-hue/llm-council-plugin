@@ -4,11 +4,12 @@ This directory contains lifecycle hooks that enhance the security and reliabilit
 
 ## Overview
 
-The hooks implement a defense-in-depth security model:
+The hooks implement a defense-in-depth security model with three lifecycle hooks:
+- **SessionStart** (`session-start.sh`) - Initializes environment for council operations
 - **PreToolUse** (`pre-tool.sh`) - Validates commands before execution
 - **PostToolUse** (`post-tool.sh`) - Analyzes outputs and provides intelligent context
 
-Both hooks follow [Claude Code hooks best practices](https://code.claude.com/docs/en/hooks-guide.md) with structured JSON output and appropriate exit codes.
+All hooks follow [Claude Code hooks best practices](https://code.claude.com/docs/en/hooks-guide.md) with structured JSON output and appropriate exit codes.
 
 ## Hook Configuration
 
@@ -17,6 +18,26 @@ Hooks are registered via `hooks.json` and target Bash tool executions. They run 
 ```json
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [{
+          "type": "command",
+          "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh",
+          "timeout": 30,
+          "description": "Initialize LLM Council environment for new sessions"
+        }]
+      },
+      {
+        "matcher": "resume",
+        "hooks": [{
+          "type": "command",
+          "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh",
+          "timeout": 30,
+          "description": "Re-initialize LLM Council environment for resumed sessions"
+        }]
+      }
+    ],
     "PreToolUse": [{
       "matcher": "Bash",
       "hooks": [{
@@ -37,6 +58,113 @@ Hooks are registered via `hooks.json` and target Bash tool executions. They run 
     }]
   }
 }
+```
+
+## SessionStart Hook (`session-start.sh`)
+
+### Purpose
+Initializes the environment for LLM Council operations at the start of each Claude Code session. This hook sets up persistent environment variables that solve the "Shell cwd was reset" issue and configure council operational parameters.
+
+### Initialization Logic
+
+1. **Environment Variable Persistence** (via `CLAUDE_ENV_FILE`)
+   - `COUNCIL_DIR` - Council session directory (default: `.council`)
+   - `COUNCIL_MAX_COMMAND_LENGTH` - Max command length for validation (default: 50000)
+   - `COUNCIL_MAX_OUTPUT_LENGTH` - Output warning threshold (default: 500000)
+   - `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1` - **Prevents "Shell cwd was reset" messages**
+   - `COUNCIL_PLUGIN_ROOT` - Plugin installation path for scripts
+
+2. **Dependency Validation** (Non-blocking)
+   - Checks for required CLI tools (`bash`, `jq`)
+   - Reports missing dependencies as warnings
+   - Hook continues even if dependencies are missing
+
+3. **Council Script Validation** (Non-blocking)
+   - Validates existence of council orchestrator scripts
+   - Checks script executability
+   - Warns if scripts are missing or not executable
+
+### Exit Codes
+
+- **0** - Success (always succeeds, even with warnings)
+- SessionStart hooks **cannot block** session initialization per official Claude Code behavior
+
+### JSON Output Schema (Official Claude Code Format)
+
+```json
+{
+  "hookSpecificOutput": {
+    "hookEventName": "SessionStart",
+    "additionalContext": "LLM Council Plugin environment initialized for startup session. Environment variables configured: COUNCIL_DIR, COUNCIL_MAX_COMMAND_LENGTH, COUNCIL_MAX_OUTPUT_LENGTH, CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR."
+  }
+}
+```
+
+### Environment Variables
+
+**Provided by Claude Code:**
+- `CLAUDE_PROJECT_DIR` - Project root path (for path resolution)
+- `CLAUDE_PLUGIN_ROOT` - Plugin installation path
+- `CLAUDE_ENV_FILE` - File path to persist environment variables (**SessionStart exclusive**)
+
+**Set by this hook (persisted across session):**
+- `COUNCIL_DIR` - Council working directory
+- `COUNCIL_MAX_COMMAND_LENGTH` - PreToolUse validation limit
+- `COUNCIL_MAX_OUTPUT_LENGTH` - PostToolUse warning threshold
+- `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR` - Prevents cwd reset messages
+- `COUNCIL_PLUGIN_ROOT` - Plugin root for script execution
+
+### How It Solves "Shell cwd was reset"
+
+The **official solution** per Claude Code IAM documentation is to use SessionStart hooks with `CLAUDE_ENV_FILE`:
+
+1. **Problem**: Claude Code resets working directory between bash calls for security
+2. **Solution**: Set `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1` in `CLAUDE_ENV_FILE`
+3. **Result**: Working directory is maintained, eliminating reset messages
+
+This is **Method 1** from the official documentation and the recommended approach for plugins.
+
+### Matcher Values
+
+SessionStart hooks support four matchers:
+
+| Matcher | When Triggered | Hook Behavior |
+|---------|---------------|---------------|
+| `startup` | New session created | Full environment initialization |
+| `resume` | Session resumed (`/resume`, `--resume`) | Re-initialize environment |
+| `clear` | Context cleared (`/clear`) | Re-setup after clear |
+| `compact` | Context compacted | Re-setup after compaction |
+
+Currently registered for: `startup`, `resume`
+
+### Example Scenarios
+
+**Scenario 1: New session startup**
+```bash
+# User starts new Claude Code session
+$ claude -p /path/to/project
+
+# SessionStart hook runs automatically
+# Output: Initializes COUNCIL_DIR, sets CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1
+# Result: Environment ready, no "Shell cwd was reset" messages during session
+```
+
+**Scenario 2: Resume existing session**
+```bash
+# User resumes previous session
+$ claude --resume last
+
+# SessionStart hook runs with matcher="resume"
+# Output: Re-initializes environment variables
+# Result: Environment restored to working state
+```
+
+**Scenario 3: Missing dependencies**
+```bash
+# jq is not installed
+# Hook Output: Warning about jq, but continues
+# Exit: 0 (non-blocking)
+# Session starts normally with reduced validation capabilities
 ```
 
 ## PreToolUse Hook (`pre-tool.sh`)
@@ -294,6 +422,24 @@ echo '{"tool_name":"Bash","tool_output":"Error: 401 Unauthorized","exit_code":"1
 
 # Test sensitive data detection
 echo '{"tool_name":"Bash","tool_output":"API_KEY=sk-proj-abc123def456","exit_code":"0"}' | ./hooks/post-tool.sh
+```
+
+Test session-start hook:
+```bash
+# Test startup scenario with environment persistence
+TEMP_ENV=$(mktemp)
+echo '{"session_id":"test123","transcript_path":"~/.claude/test.jsonl","cwd":"'$(pwd)'","permission_mode":"default","hook_event_name":"SessionStart","source":"startup"}' | \
+  CLAUDE_PROJECT_DIR=$(pwd) CLAUDE_ENV_FILE=$TEMP_ENV ./hooks/session-start.sh
+cat $TEMP_ENV
+rm $TEMP_ENV
+
+# Test resume scenario
+echo '{"session_id":"test456","transcript_path":"~/.claude/test.jsonl","cwd":"'$(pwd)'","permission_mode":"default","hook_event_name":"SessionStart","source":"resume"}' | \
+  CLAUDE_PROJECT_DIR=$(pwd) ./hooks/session-start.sh
+
+# Test without CLAUDE_ENV_FILE (graceful degradation)
+echo '{"session_id":"test789","transcript_path":"~/.claude/test.jsonl","cwd":"'$(pwd)'","permission_mode":"default","hook_event_name":"SessionStart","source":"startup"}' | \
+  CLAUDE_PROJECT_DIR=$(pwd) ./hooks/session-start.sh
 ```
 
 ## Configuration

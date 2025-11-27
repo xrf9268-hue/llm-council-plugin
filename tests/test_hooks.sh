@@ -12,6 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 PRE_TOOL_HOOK="$PROJECT_ROOT/hooks/pre-tool.sh"
 POST_TOOL_HOOK="$PROJECT_ROOT/hooks/post-tool.sh"
+SESSION_START_HOOK="$PROJECT_ROOT/hooks/session-start.sh"
 
 # Test results tracking
 TESTS_RUN=0
@@ -455,6 +456,241 @@ test_post_tool_json_output_structure() {
 }
 
 # ============================================================================
+# SessionStart Hook Tests
+# ============================================================================
+
+test_session_start_startup() {
+    test_start "session_start_startup" "Test SessionStart hook for startup scenario"
+
+    local input='{"session_id":"test123","transcript_path":"~/.claude/test.jsonl","cwd":"'"$PROJECT_ROOT"'","permission_mode":"default","hook_event_name":"SessionStart","source":"startup"}'
+    local output
+    local exit_code
+
+    # Create temporary CLAUDE_ENV_FILE
+    local temp_env_file=$(mktemp)
+
+    # Capture stdout only for JSON parsing (stderr contains warnings)
+    # Export variables so they're available in the pipeline
+    export CLAUDE_PROJECT_DIR="$PROJECT_ROOT"
+    export CLAUDE_ENV_FILE="$temp_env_file"
+    output=$(echo "$input" | "$SESSION_START_HOOK" 2>/dev/null)
+    exit_code=$?
+    unset CLAUDE_PROJECT_DIR CLAUDE_ENV_FILE
+
+    if [[ $exit_code -ne 0 ]]; then
+        test_fail "Should exit 0, got $exit_code" "session_start_startup"
+        rm -f "$temp_env_file"
+        return
+    fi
+    echo "  ✓ Exit code 0 (success)"
+
+    # Check official JSON schema structure
+    if echo "$output" | jq -e '.hookSpecificOutput.hookEventName == "SessionStart"' >/dev/null 2>&1; then
+        echo "  ✓ Has official hookSpecificOutput wrapper with SessionStart event"
+    else
+        test_fail "Missing official hookSpecificOutput wrapper: $output" "session_start_startup"
+        rm -f "$temp_env_file"
+        return
+    fi
+
+    # Check additionalContext
+    if echo "$output" | jq -e '.hookSpecificOutput | has("additionalContext")' >/dev/null 2>&1; then
+        echo "  ✓ Has additionalContext field"
+    else
+        test_fail "Missing additionalContext field" "session_start_startup"
+        rm -f "$temp_env_file"
+        return
+    fi
+
+    # Check environment variables were persisted
+    if grep -q "COUNCIL_DIR" "$temp_env_file"; then
+        echo "  ✓ COUNCIL_DIR persisted to CLAUDE_ENV_FILE"
+    else
+        test_fail "COUNCIL_DIR not persisted" "session_start_startup"
+        rm -f "$temp_env_file"
+        return
+    fi
+
+    if grep -q "CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR" "$temp_env_file"; then
+        echo "  ✓ CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR persisted"
+        test_pass
+    else
+        test_fail "CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR not persisted" "session_start_startup"
+    fi
+
+    rm -f "$temp_env_file"
+}
+
+test_session_start_resume() {
+    test_start "session_start_resume" "Test SessionStart hook for resume scenario"
+
+    local input='{"session_id":"test456","transcript_path":"~/.claude/test.jsonl","cwd":"'"$PROJECT_ROOT"'","permission_mode":"default","hook_event_name":"SessionStart","source":"resume"}'
+    local output
+    local exit_code
+
+    local temp_env_file=$(mktemp)
+
+    # Capture stdout only for JSON parsing (stderr contains warnings)
+    # Export variables so they're available in the pipeline
+    export CLAUDE_PROJECT_DIR="$PROJECT_ROOT"
+    export CLAUDE_ENV_FILE="$temp_env_file"
+    output=$(echo "$input" | "$SESSION_START_HOOK" 2>/dev/null)
+    exit_code=$?
+    unset CLAUDE_PROJECT_DIR CLAUDE_ENV_FILE
+
+    if [[ $exit_code -eq 0 ]]; then
+        echo "  ✓ Exit code 0 (success)"
+    else
+        test_fail "Should exit 0 for resume, got $exit_code" "session_start_resume"
+        rm -f "$temp_env_file"
+        return
+    fi
+
+    # Check context mentions "resume"
+    if echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("resume")' >/dev/null 2>&1; then
+        echo "  ✓ Context mentions resume scenario"
+        test_pass
+    else
+        test_pass "with warnings (context doesn't mention resume explicitly)"
+    fi
+
+    rm -f "$temp_env_file"
+}
+
+test_session_start_no_env_file() {
+    test_start "session_start_no_env_file" "Test SessionStart hook without CLAUDE_ENV_FILE"
+
+    local input='{"session_id":"test789","transcript_path":"~/.claude/test.jsonl","cwd":"'"$PROJECT_ROOT"'","permission_mode":"default","hook_event_name":"SessionStart","source":"startup"}'
+    local output
+    local exit_code
+
+    # Run without CLAUDE_ENV_FILE (should succeed but warn)
+    # Export only CLAUDE_PROJECT_DIR, not CLAUDE_ENV_FILE
+    export CLAUDE_PROJECT_DIR="$PROJECT_ROOT"
+    output=$(echo "$input" | "$SESSION_START_HOOK" 2>/dev/null)
+    exit_code=$?
+    unset CLAUDE_PROJECT_DIR
+
+    if [[ $exit_code -eq 0 ]]; then
+        echo "  ✓ Hook handles missing CLAUDE_ENV_FILE gracefully"
+        test_pass
+    else
+        test_fail "Should handle missing CLAUDE_ENV_FILE gracefully, got exit $exit_code" "session_start_no_env_file"
+    fi
+}
+
+test_session_start_json_structure() {
+    test_start "session_start_json_structure" "Test SessionStart JSON output schema compliance"
+
+    local input='{"session_id":"test999","transcript_path":"~/.claude/test.jsonl","cwd":"'"$PROJECT_ROOT"'","permission_mode":"default","hook_event_name":"SessionStart","source":"startup"}'
+    local output
+    local temp_env_file=$(mktemp)
+
+    # Capture stdout only for JSON parsing (stderr contains warnings)
+    # Export variables so they're available in the pipeline
+    export CLAUDE_PROJECT_DIR="$PROJECT_ROOT"
+    export CLAUDE_ENV_FILE="$temp_env_file"
+    output=$(echo "$input" | "$SESSION_START_HOOK" 2>/dev/null)
+    unset CLAUDE_PROJECT_DIR CLAUDE_ENV_FILE
+
+    # Validate JSON structure
+    if echo "$output" | jq empty 2>/dev/null; then
+        echo "  ✓ Output is valid JSON"
+    else
+        test_fail "Output should be valid JSON" "session_start_json_structure"
+        rm -f "$temp_env_file"
+        return
+    fi
+
+    local has_expected_fields=true
+
+    # Check for hookSpecificOutput wrapper
+    if ! echo "$output" | jq -e 'has("hookSpecificOutput")' >/dev/null 2>&1; then
+        echo "  ✗ Missing hookSpecificOutput wrapper"
+        has_expected_fields=false
+    else
+        echo "  ✓ Has hookSpecificOutput wrapper"
+    fi
+
+    # Check for hookEventName
+    if ! echo "$output" | jq -e '.hookSpecificOutput.hookEventName == "SessionStart"' >/dev/null 2>&1; then
+        echo "  ✗ Missing or incorrect hookEventName"
+        has_expected_fields=false
+    else
+        echo "  ✓ Has correct hookEventName"
+    fi
+
+    # Check for additionalContext
+    if ! echo "$output" | jq -e '.hookSpecificOutput | has("additionalContext")' >/dev/null 2>&1; then
+        echo "  ✗ Missing additionalContext"
+        has_expected_fields=false
+    else
+        echo "  ✓ Has additionalContext"
+    fi
+
+    if $has_expected_fields; then
+        test_pass "Official JSON schema compliant"
+    else
+        test_fail "JSON schema incomplete or incorrect" "session_start_json_structure"
+    fi
+
+    rm -f "$temp_env_file"
+}
+
+test_session_start_environment_vars() {
+    test_start "session_start_environment_vars" "Test SessionStart environment variable persistence"
+
+    local input='{"session_id":"test111","transcript_path":"~/.claude/test.jsonl","cwd":"'"$PROJECT_ROOT"'","permission_mode":"default","hook_event_name":"SessionStart","source":"startup"}'
+    local temp_env_file=$(mktemp)
+
+    # Must provide CLAUDE_ENV_FILE for variables to be persisted
+    # Export so they're available in the pipeline
+    export CLAUDE_PROJECT_DIR="$PROJECT_ROOT"
+    export CLAUDE_ENV_FILE="$temp_env_file"
+    echo "$input" | "$SESSION_START_HOOK" >/dev/null 2>/dev/null
+    unset CLAUDE_PROJECT_DIR CLAUDE_ENV_FILE
+
+    local all_vars_present=true
+
+    # Check required environment variables
+    if grep -q "export COUNCIL_DIR=" "$temp_env_file"; then
+        echo "  ✓ COUNCIL_DIR exported"
+    else
+        echo "  ✗ COUNCIL_DIR not exported"
+        all_vars_present=false
+    fi
+
+    if grep -q "export COUNCIL_MAX_COMMAND_LENGTH=" "$temp_env_file"; then
+        echo "  ✓ COUNCIL_MAX_COMMAND_LENGTH exported"
+    else
+        echo "  ✗ COUNCIL_MAX_COMMAND_LENGTH not exported"
+        all_vars_present=false
+    fi
+
+    if grep -q "export COUNCIL_MAX_OUTPUT_LENGTH=" "$temp_env_file"; then
+        echo "  ✓ COUNCIL_MAX_OUTPUT_LENGTH exported"
+    else
+        echo "  ✗ COUNCIL_MAX_OUTPUT_LENGTH not exported"
+        all_vars_present=false
+    fi
+
+    if grep -q "export CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=" "$temp_env_file"; then
+        echo "  ✓ CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR exported"
+    else
+        echo "  ✗ CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR not exported"
+        all_vars_present=false
+    fi
+
+    if $all_vars_present; then
+        test_pass "All required environment variables present"
+    else
+        test_fail "Some environment variables missing" "session_start_environment_vars"
+    fi
+
+    rm -f "$temp_env_file"
+}
+
+# ============================================================================
 # Integration Tests
 # ============================================================================
 
@@ -474,6 +710,13 @@ test_hooks_executable() {
         echo "  ✓ post-tool.sh is executable"
     else
         echo "  ✗ post-tool.sh is not executable"
+        all_executable=false
+    fi
+
+    if [[ -x "$SESSION_START_HOOK" ]]; then
+        echo "  ✓ session-start.sh is executable"
+    else
+        echo "  ✗ session-start.sh is not executable"
         all_executable=false
     fi
 
@@ -538,6 +781,13 @@ run_all_tests() {
     test_post_tool_non_bash_tool
     test_post_tool_empty_output
     test_post_tool_json_output_structure
+
+    echo -e "\n${BLUE}▶ Running SessionStart Hook Tests${NC}"
+    test_session_start_startup
+    test_session_start_resume
+    test_session_start_no_env_file
+    test_session_start_json_structure
+    test_session_start_environment_vars
 
     print_summary
 }
