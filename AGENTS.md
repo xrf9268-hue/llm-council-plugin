@@ -204,21 +204,30 @@ All hooks must use structured JSON output per the official Claude Code hooks API
 **PreToolUse hooks** (validation before execution):
 ```json
 {
-  "permissionDecision": "allow|deny|ask",
-  "permissionDecisionReason": "explanation if denied/ask",
-  "systemMessage": "user-facing message",
-  "suppressOutput": false
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "allow|deny|ask",
+    "permissionDecisionReason": "explanation if denied/ask",
+    "updatedInput": null
+  },
+  "continue": true,
+  "systemMessage": "user-facing message"
 }
 ```
 
 **PostToolUse hooks** (analysis after execution):
 ```json
 {
-  "additionalContext": "context for Claude to consider",
-  "systemMessage": "user-facing warning/info",
-  "suppressOutput": false
+  "hookSpecificOutput": {
+    "hookEventName": "PostToolUse",
+    "additionalContext": "context for Claude to consider"
+  },
+  "continue": true,
+  "systemMessage": "user-facing warning/info"
 }
 ```
+
+**IMPORTANT**: The `hookSpecificOutput` wrapper is required by the official Claude Code hooks API. Hooks using the older simplified format (without `hookSpecificOutput`) will not work correctly and may cause "BLOCKED" errors even for legitimate operations.
 
 ### Exit Code Conventions
 
@@ -306,6 +315,33 @@ See `hooks/README.md` for comprehensive documentation including:
 - Configuration via environment variables
 - Manual testing procedures
 - Troubleshooting common issues (hook not running, jq unavailable, timeouts, false positives)
+
+### Common Pitfalls and Lessons Learned
+
+**Issue: Hooks block legitimate shell operators (&&, ||, |, etc.)**
+
+**Symptoms:**
+- Commands with `&&`, `||`, or `|` are blocked by PreToolUse hook
+- Error messages like "BLOCKED: Detected potentially dangerous pattern: &&"
+- Council orchestrator commands fail with hook validation errors
+
+**Root Cause:**
+Using incorrect JSON schema format. The official Claude Code hooks API requires the `hookSpecificOutput` wrapper. Hooks using the simplified format without this wrapper may be misinterpreted by Claude Code, causing legitimate operations to be blocked.
+
+**Solution:**
+1. ✅ **Always use official JSON schema** with `hookSpecificOutput` wrapper
+2. ✅ **Never block legitimate shell operators** - `&&`, `||`, `|`, `;`, `>`, `<` are fundamental shell features
+3. ✅ **Use `CLAUDE_PROJECT_DIR`** for all path resolution in hooks
+4. ✅ **Query official documentation** when implementing hooks - don't rely on examples alone
+
+**Prevention:**
+- Validate hooks against official schema: https://code.claude.com/docs/en/hooks-guide.md
+- Test hooks with legitimate complex commands (pipes, redirects, chaining)
+- Review hook output format matches official examples exactly
+- When debugging hook issues, always check official docs first
+
+**Key Takeaway:**
+Hook schema compliance is critical. Even minor deviations from the official format can cause unexpected blocking behavior. Always validate against official Claude Code documentation rather than relying on third-party examples or documentation.
 
 ### References
 

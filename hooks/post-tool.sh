@@ -12,13 +12,18 @@
 # Receives tool context via stdin as JSON.
 #
 # Exit codes:
-#   0 - Continue (may return JSON with context/warnings)
-#   non-zero - Signal issue (logged, non-blocking)
+#   0 - Continue with structured JSON response
+#   non-zero - Signal issue (logged only, non-blocking)
 #
-# Output: JSON object with optional fields (exit 0 only):
-#   - additionalContext: context for Claude to consider
-#   - systemMessage: message for the user
-#   - suppressOutput: true to hide hook output
+# Output: Official Claude Code PostToolUse JSON schema (exit 0):
+#   {
+#     "hookSpecificOutput": {
+#       "hookEventName": "PostToolUse",
+#       "additionalContext": "context for Claude to consider"
+#     },
+#     "continue": true,
+#     "systemMessage": "message for the user"
+#   }
 
 set -euo pipefail
 
@@ -41,8 +46,17 @@ if command -v jq &>/dev/null; then
     TOOL_OUTPUT=$(echo "$INPUT" | jq -r '.tool_output // empty' 2>/dev/null || echo "")
     EXIT_CODE=$(echo "$INPUT" | jq -r '.exit_code // "0"' 2>/dev/null || echo "")
 else
-    # If jq unavailable, exit gracefully without validation
-    echo '{"additionalContext":"Post-tool validation skipped (jq not available)","suppressOutput":true}'
+    # If jq unavailable, exit gracefully without validation (fail open)
+    cat <<'EOF'
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PostToolUse",
+    "additionalContext": "Post-tool validation skipped (jq not available)"
+  },
+  "continue": true,
+  "systemMessage": "Warning: jq not available, post-tool validation skipped"
+}
+EOF
     exit 0
 fi
 
@@ -173,7 +187,7 @@ check_sensitive_data_leak() {
     return 0
 }
 
-# Function to build JSON response with collected messages
+# Function to build JSON response using official Claude Code PostToolUse schema
 build_json_response() {
     local additional_context=""
     local system_message=""
@@ -188,14 +202,17 @@ build_json_response() {
         system_message=$(printf '%s\n' "${SYSTEM_MESSAGES[@]}")
     fi
 
-    # Build JSON response
+    # Build JSON response using official schema
     jq -n \
         --arg context "$additional_context" \
         --arg message "$system_message" \
         '{
-            additionalContext: (if $context != "" then $context else null end),
-            systemMessage: (if $message != "" then $message else null end),
-            suppressOutput: false
+            hookSpecificOutput: {
+                hookEventName: "PostToolUse",
+                additionalContext: (if $context != "" then $context else null end)
+            },
+            continue: true,
+            systemMessage: (if $message != "" then $message else null end)
         }'
 }
 

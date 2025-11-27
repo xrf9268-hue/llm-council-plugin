@@ -50,31 +50,35 @@ Validates commands before execution to detect security issues and enforce counci
    - Enforces max command length (default: 50,000 chars)
    - Configurable via `COUNCIL_MAX_COMMAND_LENGTH`
 
-2. **Injection Pattern Detection** (Warning)
-   - Detects suspicious patterns: multiple command separators, obfuscation attempts
-   - Informational only - does not block legitimate shell operations
+2. **Obfuscation Detection** (Warning)
+   - Detects suspicious patterns: hex encoding, octal encoding, IFS manipulation
+   - Informational only - does NOT block legitimate shell operators (&&, ||, |, ;, etc.)
 
 3. **System Path Protection** (Warning)
    - Warns about destructive operations on critical paths (`/etc/passwd`, `~/.ssh/`, etc.)
    - Informational only - allows legitimate operations
 
 4. **Council Script Validation** (Blocking)
-   - Validates existence of council orchestrator scripts
-   - Uses `CLAUDE_PROJECT_DIR` to resolve paths correctly
+   - Validates existence and executability of council orchestrator scripts
+   - Uses `CLAUDE_PROJECT_DIR` to resolve absolute paths correctly
 
 ### Exit Codes
 
 - **0 with JSON** - Allow execution (may include warnings)
 - **2** - Block execution with error message
 
-### JSON Output Schema
+### JSON Output Schema (Official Claude Code Format)
 
 ```json
 {
-  "permissionDecision": "allow|deny|ask",
-  "permissionDecisionReason": "explanation if denied/ask",
-  "systemMessage": "user-facing message",
-  "suppressOutput": false
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "allow|deny|ask",
+    "permissionDecisionReason": "explanation if denied/ask",
+    "updatedInput": null
+  },
+  "continue": true,
+  "systemMessage": "user-facing message"
 }
 ```
 
@@ -86,26 +90,26 @@ Validates commands before execution to detect security issues and enforce counci
 
 ### Example Scenarios
 
-**Scenario 1: Normal command**
+**Scenario 1: Normal command with && operator**
 ```bash
-# Input: legitimate bash command with pipes
-$ bash -c "ls -la | grep config"
+# Input: legitimate bash command with && operator
+$ bash -c "ls -la && echo done"
 
-# Output: {"permissionDecision":"allow"}
+# Output: {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow",...},"continue":true}
 # Exit: 0
 ```
 
 **Scenario 2: Command too long**
 ```bash
 # Input: 60,000 character command
-# Output: "Command too long (60000 chars, max: 50000)"
+# Output: "Command exceeds maximum length: 60000 chars (max: 50000)"
 # Exit: 2 (blocked)
 ```
 
 **Scenario 3: Missing council script**
 ```bash
 # Input: skills/council-orchestrator/scripts/nonexistent.sh
-# Output: "Council script not found: ..."
+# Output: "Council script not found at: /home/user/llm-council-plugin/skills/..."
 # Exit: 2 (blocked)
 ```
 
@@ -141,13 +145,16 @@ Analyzes command outputs to provide intelligent context and warnings to Claude.
 - **0 with JSON** - Continue (may provide context/warnings)
 - **non-zero** - Log issue (non-blocking)
 
-### JSON Output Schema
+### JSON Output Schema (Official Claude Code Format)
 
 ```json
 {
-  "additionalContext": "context for Claude to consider",
-  "systemMessage": "user-facing warning/info",
-  "suppressOutput": false
+  "hookSpecificOutput": {
+    "hookEventName": "PostToolUse",
+    "additionalContext": "context for Claude to consider"
+  },
+  "continue": true,
+  "systemMessage": "user-facing warning/info"
 }
 ```
 
@@ -165,7 +172,11 @@ Analyzes command outputs to provide intelligent context and warnings to Claude.
 
 # JSON Response:
 {
-  "additionalContext": "Rate limit detected. Consider implementing exponential backoff...",
+  "hookSpecificOutput": {
+    "hookEventName": "PostToolUse",
+    "additionalContext": "Rate limit detected. Consider implementing exponential backoff..."
+  },
+  "continue": true,
   "systemMessage": "⚠️  Rate limit detected - consider waiting before retrying"
 }
 ```
@@ -176,18 +187,26 @@ Analyzes command outputs to provide intelligent context and warnings to Claude.
 
 # JSON Response:
 {
-  "additionalContext": "Council quorum not met: only 1 of 2 required responses available...",
+  "hookSpecificOutput": {
+    "hookEventName": "PostToolUse",
+    "additionalContext": "Council quorum not met: only 1 of 2 required responses available..."
+  },
+  "continue": true,
   "systemMessage": "⚠️  Council quorum low: 1/2 models responded"
 }
 ```
 
 **Scenario 3: Sensitive data leak**
 ```bash
-# Output contains: "sk-proj-abc123..." (OpenAI key pattern)
+# Output contains: "sk-proj-abc123..." (OpenAI key pattern with 20+ chars)
 
 # JSON Response:
 {
-  "additionalContext": "SECURITY: Potential API key or token detected...",
+  "hookSpecificOutput": {
+    "hookEventName": "PostToolUse",
+    "additionalContext": "SECURITY: Potential API key or token detected..."
+  },
+  "continue": true,
   "systemMessage": "🔒 Potential sensitive data detected in output"
 }
 ```
