@@ -1,5 +1,17 @@
 # Troubleshooting Guide
 
+## Quick Diagnosis
+
+If you're experiencing issues with hooks blocking commands, run the diagnostic script first:
+
+```bash
+./scripts/verify-plugin-version.sh
+```
+
+This will automatically detect version mismatches and provide specific fix instructions.
+
+---
+
 ## Common Issues and Solutions
 
 ### Issue: "BLOCKED: Detected potentially dangerous pattern: &&"
@@ -15,13 +27,21 @@
 **Root Cause:**
 This error occurs when using an **outdated cached version** of the plugin that contains the old hook implementation. The old `pre-tool.sh` incorrectly blocked all shell operators including `&&`, `||`, `|`, `;`, etc.
 
-**Status:** ✅ **FIXED** in commit `ce48fbb` (PR #6)
+**Status:** ✅ **FIXED** in commit `78ac404` (PR #13)
 
-**Solution:**
+**Quick Fix:**
+```bash
+# Run diagnostic script to identify the issue
+./scripts/verify-plugin-version.sh
+
+# Follow the script's recommendations
+```
+
+**Manual Solution:**
 Update your locally cached plugin to get the latest version:
 
 ```bash
-# Method 1: Reinstall the plugin (recommended)
+# Method 1: Reinstall the plugin (recommended - safest)
 claude plugin uninstall llm-council-plugin
 claude plugin install <your-plugin-source>
 
@@ -29,27 +49,53 @@ claude plugin install <your-plugin-source>
 rm -rf ~/.claude/plugins/cache/llm-council-plugin
 # Then restart Claude Code - it will re-cache the latest version
 
-# Method 3: Manual hook file replacement
-# Copy the new hook from the repo to your cache:
-cp <repo>/hooks/pre-tool.sh ~/.claude/plugins/cache/llm-council-plugin/hooks/
+# Method 3: Manual hook file replacement (fastest)
+# Find your cache directory (usually one of these):
+#   macOS: /Users/$USER/.claude/plugins/cache/llm-council-plugin
+#   Linux: ~/.claude/plugins/cache/llm-council-plugin
+#   Linux (alt): ~/.config/claude/plugins/cache/llm-council-plugin
+
+# Copy updated hooks from repository
+cp ./hooks/pre-tool.sh ~/.claude/plugins/cache/llm-council-plugin/hooks/
+cp ./hooks/post-tool.sh ~/.claude/plugins/cache/llm-council-plugin/hooks/
+chmod +x ~/.claude/plugins/cache/llm-council-plugin/hooks/*.sh
+
+# Restart Claude Code or start a new session
 ```
 
 **Verify Fix:**
-After updating, test that shell operators are allowed:
+Use the diagnostic script or test manually:
 
 ```bash
-# Test command (should return "allow"):
+# Option 1: Use diagnostic script (recommended)
+./scripts/verify-plugin-version.sh
+
+# Option 2: Manual test - should return "allow" with no blocking
 echo '{"tool_name":"Bash","tool_input":{"command":"cd /tmp && echo test"}}' | \
   ~/.claude/plugins/cache/llm-council-plugin/hooks/pre-tool.sh
 
-# Expected output:
-# {"permissionDecision":"allow",...}
+# Expected output (indicates fix is working):
+# {
+#   "hookSpecificOutput": {
+#     "hookEventName": "PreToolUse",
+#     "permissionDecision": "allow",
+#     ...
+#   }
+# }
 ```
 
 **What Changed:**
 - ❌ **Old behavior**: Blocked ALL shell operators (`&&`, `||`, `|`, `;`, etc.)
-- ✅ **New behavior**: Only warns on suspicious patterns (multiple consecutive operators like `&&&`, obfuscation attempts)
+- ✅ **New behavior**: Only blocks actual security threats (command too long, missing council scripts)
+- ✅ Warnings only for obfuscation attempts (hex encoding, IFS manipulation)
+- ✅ Uses official Claude Code JSON schema with `hookSpecificOutput` wrapper
 - ✅ Follows [Claude Code hooks best practices](https://code.claude.com/docs/en/hooks-guide.md)
+
+**Why This Happened:**
+The old hooks incorrectly used regex patterns that matched legitimate shell operators. The fix:
+1. Removed all checks for standard shell operators (`&&`, `||`, `|`, `;`)
+2. Updated to official Claude Code hooks JSON schema
+3. Focused on actual security threats (injection, obfuscation) not syntax
 
 ---
 

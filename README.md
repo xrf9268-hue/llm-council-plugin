@@ -56,6 +56,22 @@ Quick summary:
 - Recommended: in Claude Code, add a GitHub marketplace with owner `xrf9268-hue` (or add the Git repo `https://github.com/xrf9268-hue/llm-council-plugin.git`), then install **LLM Council** from the marketplace.
 - For local development: clone this repo into `.claude-plugins/llm-council` in your project and ensure the scripts in `hooks/` and `skills/council-orchestrator/scripts/` are executable.
 
+#### ⚠️ Troubleshooting Hook Issues
+
+If you see errors like **"BLOCKED: Detected potentially dangerous pattern: &&"**, your cached plugin is outdated.
+
+**Quick fix:**
+```bash
+# Run diagnostic script
+./scripts/verify-plugin-version.sh
+
+# Or manually update cache
+rm -rf ~/.claude/plugins/cache/llm-council-plugin
+# Then reinstall the plugin
+```
+
+See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for comprehensive troubleshooting guidance.
+
 ### Usage
 
 #### Using the Slash Command
