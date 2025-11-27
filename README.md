@@ -311,10 +311,21 @@ llm-council-plugin/
 │           └── chairman_prompt.txt   # Chairman invocation template
 ├── hooks/
 │   ├── hooks.json               # Hook configuration
+│   ├── session-start.sh         # SessionStart hook (environment setup)
 │   ├── pre-tool.sh              # Pre-execution validation
-│   └── post-tool.sh             # Post-execution verification
+│   ├── post-tool.sh             # Post-execution verification
+│   └── README.md                # Hook documentation and troubleshooting
+├── scripts/
+│   └── verify-plugin-version.sh # Plugin cache diagnostic tool
+├── docs/
+│   ├── INSTALL.md               # Installation and setup guide
+│   └── TROUBLESHOOTING.md       # Comprehensive troubleshooting guide
 ├── tests/
-│   └── test_runner.sh           # Test suite
+│   ├── test_runner.sh           # Main test suite
+│   └── test_hooks.sh            # Hook-specific tests
+├── CLAUDE.md                    # Project context for Claude Code
+├── AGENTS.md                    # Repository guidelines and standards
+├── header.png                   # Header image
 └── README.md                    # This file
 ```
 
