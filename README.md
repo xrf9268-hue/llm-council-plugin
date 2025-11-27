@@ -202,8 +202,11 @@ The council handles failures gracefully:
 Run the test suite:
 
 ```bash
-# Run all tests
+# Run all tests (council + hooks)
 ./tests/test_runner.sh
+
+# Run hook tests separately
+./tests/test_hooks.sh
 
 # Run specific test category
 ./tests/test_runner.sh unit_council_init
@@ -221,7 +224,11 @@ Run the test suite:
 
 ## Troubleshooting
 
-### "Claude CLI is required but not available"
+**For comprehensive troubleshooting guidance, see [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).**
+
+### Common Issues
+
+#### "Claude CLI is required but not available"
 
 Install the Claude Code CLI:
 
@@ -229,7 +236,7 @@ Install the Claude Code CLI:
 # Visit https://claude.ai/code for installation instructions
 ```
 
-### "Quorum not met"
+#### "Quorum not met"
 
 At least 2 responses are needed for peer review. Check:
 
@@ -237,7 +244,7 @@ At least 2 responses are needed for peer review. Check:
 2. Are there rate limit issues?
 3. Check `.council/stage1_*.txt` files for error messages
 
-### "Empty response from [CLI]"
+#### "Empty response from [CLI]"
 
 The CLI returned nothing. Common causes:
 
@@ -251,13 +258,15 @@ Check the output file for error details:
 cat .council/stage1_claude.txt
 ```
 
-### Hooks Not Running
+#### Hooks Not Running
 
 Ensure hooks are configured in `hooks/hooks.json` and scripts are executable:
 
 ```bash
-chmod +x hooks/pre-tool.sh hooks/post-tool.sh
+chmod +x hooks/session-start.sh hooks/pre-tool.sh hooks/post-tool.sh
 ```
+
+See [hooks/README.md](hooks/README.md) for detailed hook troubleshooting.
 
 ## Security
 
@@ -311,10 +320,21 @@ llm-council-plugin/
 │           └── chairman_prompt.txt   # Chairman invocation template
 ├── hooks/
 │   ├── hooks.json               # Hook configuration
+│   ├── session-start.sh         # SessionStart hook (environment setup)
 │   ├── pre-tool.sh              # Pre-execution validation
-│   └── post-tool.sh             # Post-execution verification
+│   ├── post-tool.sh             # Post-execution verification
+│   └── README.md                # Hook documentation and troubleshooting
+├── scripts/
+│   └── verify-plugin-version.sh # Plugin cache diagnostic tool
+├── docs/
+│   ├── INSTALL.md               # Installation and setup guide
+│   └── TROUBLESHOOTING.md       # Comprehensive troubleshooting guide
 ├── tests/
-│   └── test_runner.sh           # Test suite
+│   ├── test_runner.sh           # Main test suite
+│   └── test_hooks.sh            # Hook-specific tests
+├── CLAUDE.md                    # Project context for Claude Code
+├── AGENTS.md                    # Repository guidelines and standards
+├── header.png                   # Header image
 └── README.md                    # This file
 ```
 
