@@ -1,5 +1,7 @@
 # LLM Council Plugin for Claude Code
 
+![LLM Council Header](header.png)
+
 A multi-model consensus engine that integrates OpenAI Codex CLI, Google Gemini CLI, and Claude CLI for collaborative code review and problem-solving.
 
 ## Overview
