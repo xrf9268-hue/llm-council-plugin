@@ -65,7 +65,7 @@ test_pre_tool_normal_command() {
     local output
     local exit_code
 
-    output=$(echo "$input" | "$PRE_TOOL_HOOK" 2>&1)
+    output=$(echo "$input" | CLAUDE_PROJECT_DIR="$PROJECT_ROOT" "$PRE_TOOL_HOOK" 2>&1)
     exit_code=$?
 
     if [[ $exit_code -eq 0 ]]; then
@@ -75,12 +75,19 @@ test_pre_tool_normal_command() {
         return
     fi
 
-    # Check JSON output
-    if echo "$output" | jq -e '.permissionDecision == "allow"' >/dev/null 2>&1; then
-        echo "  ✓ JSON indicates allow"
+    # Check official JSON schema structure
+    if echo "$output" | jq -e '.hookSpecificOutput.hookEventName == "PreToolUse"' >/dev/null 2>&1; then
+        echo "  ✓ Has official hookSpecificOutput wrapper"
+    else
+        test_fail "Missing official hookSpecificOutput wrapper: $output" "pre_tool_normal_command"
+        return
+    fi
+
+    if echo "$output" | jq -e '.hookSpecificOutput.permissionDecision == "allow"' >/dev/null 2>&1; then
+        echo "  ✓ JSON indicates allow (official schema)"
         test_pass
     else
-        test_fail "JSON should indicate allow: $output" "pre_tool_normal_command"
+        test_fail "JSON should indicate allow in hookSpecificOutput: $output" "pre_tool_normal_command"
     fi
 }
 
@@ -91,11 +98,11 @@ test_pre_tool_non_bash_tool() {
     local output
     local exit_code
 
-    output=$(echo "$input" | "$PRE_TOOL_HOOK" 2>&1)
+    output=$(echo "$input" | CLAUDE_PROJECT_DIR="$PROJECT_ROOT" "$PRE_TOOL_HOOK" 2>&1)
     exit_code=$?
 
-    if [[ $exit_code -eq 0 ]] && echo "$output" | jq -e '.permissionDecision == "allow"' >/dev/null 2>&1; then
-        test_pass "Non-Bash tool allowed"
+    if [[ $exit_code -eq 0 ]] && echo "$output" | jq -e '.hookSpecificOutput.permissionDecision == "allow"' >/dev/null 2>&1; then
+        test_pass "Non-Bash tool allowed (official schema)"
     else
         test_fail "Should allow non-Bash tools" "pre_tool_non_bash_tool"
     fi
@@ -110,7 +117,7 @@ test_pre_tool_command_too_long() {
     local input="{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"$long_command\"}}"
     local exit_code
 
-    echo "$input" | "$PRE_TOOL_HOOK" >/dev/null 2>&1
+    echo "$input" | CLAUDE_PROJECT_DIR="$PROJECT_ROOT" "$PRE_TOOL_HOOK" >/dev/null 2>&1
     exit_code=$?
 
     if [[ $exit_code -eq 2 ]]; then
@@ -126,7 +133,7 @@ test_pre_tool_missing_council_script() {
     local input='{"tool_name":"Bash","tool_input":{"command":"bash skills/council-orchestrator/scripts/nonexistent_script.sh"}}'
     local exit_code
 
-    echo "$input" | "$PRE_TOOL_HOOK" >/dev/null 2>&1
+    echo "$input" | CLAUDE_PROJECT_DIR="$PROJECT_ROOT" "$PRE_TOOL_HOOK" >/dev/null 2>&1
     exit_code=$?
 
     if [[ $exit_code -eq 2 ]]; then
@@ -154,17 +161,18 @@ test_pre_tool_shell_operators_allowed() {
         local output
         local exit_code
 
-        output=$(echo "$input" | "$PRE_TOOL_HOOK" 2>&1)
+        output=$(echo "$input" | CLAUDE_PROJECT_DIR="$PROJECT_ROOT" "$PRE_TOOL_HOOK" 2>&1)
         exit_code=$?
 
         if [[ $exit_code -ne 0 ]]; then
             echo "  ✗ Blocked legitimate command: $input"
             all_passed=false
         else
-            if echo "$output" | jq -e '.permissionDecision == "allow"' >/dev/null 2>&1; then
+            # Check official schema
+            if echo "$output" | jq -e '.hookSpecificOutput.permissionDecision == "allow"' >/dev/null 2>&1; then
                 echo "  ✓ Allowed: $(echo "$input" | jq -r '.tool_input.command')"
             else
-                echo "  ✗ JSON didn't allow: $input"
+                echo "  ✗ JSON didn't allow (official schema): $input"
                 all_passed=false
             fi
         fi
@@ -183,7 +191,7 @@ test_pre_tool_empty_command() {
     local input='{"tool_name":"Bash","tool_input":{"command":""}}'
     local exit_code
 
-    echo "$input" | "$PRE_TOOL_HOOK" >/dev/null 2>&1
+    echo "$input" | CLAUDE_PROJECT_DIR="$PROJECT_ROOT" "$PRE_TOOL_HOOK" >/dev/null 2>&1
     exit_code=$?
 
     if [[ $exit_code -eq 0 ]]; then
@@ -201,13 +209,18 @@ test_pre_tool_no_jq() {
     local output
     local exit_code
 
-    output=$(PATH="/usr/local/bin:/usr/bin:/bin" command -v jq >/dev/null 2>&1 || echo "$input" | "$PRE_TOOL_HOOK" 2>&1)
+    output=$(PATH="/usr/local/bin:/usr/bin:/bin" command -v jq >/dev/null 2>&1 || echo "$input" | CLAUDE_PROJECT_DIR="$PROJECT_ROOT" "$PRE_TOOL_HOOK" 2>&1)
     exit_code=$?
 
     # If jq is available system-wide, we can't easily test this
     if command -v jq >/dev/null 2>&1; then
-        echo "  ⚠ jq is available, skipping fallback test"
-        test_pass "with warnings (jq available)"
+        echo "  ⚠ jq is available, testing with official schema"
+        output=$(echo "$input" | CLAUDE_PROJECT_DIR="$PROJECT_ROOT" "$PRE_TOOL_HOOK" 2>&1)
+        if echo "$output" | jq -e '.hookSpecificOutput.hookEventName == "PreToolUse"' >/dev/null 2>&1; then
+            test_pass "Uses official schema when jq available"
+        else
+            test_fail "Should use official schema" "pre_tool_no_jq"
+        fi
     else
         if [[ $exit_code -eq 0 ]]; then
             test_pass "Gracefully fell back when jq unavailable"
@@ -227,12 +240,20 @@ test_post_tool_rate_limit_detection() {
     local input='{"tool_name":"Bash","tool_output":"Error: rate limit exceeded","exit_code":"1"}'
     local output
 
-    output=$(echo "$input" | "$POST_TOOL_HOOK" 2>&1)
+    output=$(echo "$input" | CLAUDE_PROJECT_DIR="$PROJECT_ROOT" "$POST_TOOL_HOOK" 2>&1)
 
-    if echo "$output" | jq -e '.additionalContext | contains("Rate limit")' >/dev/null 2>&1; then
-        echo "  ✓ Detected rate limit in output"
+    # Check official schema structure
+    if echo "$output" | jq -e '.hookSpecificOutput.hookEventName == "PostToolUse"' >/dev/null 2>&1; then
+        echo "  ✓ Has official hookSpecificOutput wrapper"
     else
-        test_fail "Should detect rate limit" "post_tool_rate_limit_detection"
+        test_fail "Missing official hookSpecificOutput wrapper" "post_tool_rate_limit_detection"
+        return
+    fi
+
+    if echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("Rate limit")' >/dev/null 2>&1; then
+        echo "  ✓ Detected rate limit in additionalContext (official schema)"
+    else
+        test_fail "Should detect rate limit in hookSpecificOutput.additionalContext" "post_tool_rate_limit_detection"
         return
     fi
 
@@ -250,13 +271,13 @@ test_post_tool_auth_error_detection() {
     local input='{"tool_name":"Bash","tool_output":"Error: 401 Unauthorized - invalid api key","exit_code":"1"}'
     local output
 
-    output=$(echo "$input" | "$POST_TOOL_HOOK" 2>&1)
+    output=$(echo "$input" | CLAUDE_PROJECT_DIR="$PROJECT_ROOT" "$POST_TOOL_HOOK" 2>&1)
 
-    if echo "$output" | jq -e '.additionalContext | contains("Authentication")' >/dev/null 2>&1; then
-        echo "  ✓ Detected authentication error"
+    if echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("Authentication")' >/dev/null 2>&1; then
+        echo "  ✓ Detected authentication error (official schema)"
         test_pass
     else
-        test_fail "Should detect authentication error" "post_tool_auth_error_detection"
+        test_fail "Should detect authentication error in hookSpecificOutput.additionalContext" "post_tool_auth_error_detection"
     fi
 }
 
@@ -267,18 +288,18 @@ test_post_tool_sensitive_data_detection() {
     local input='{"tool_name":"Bash","tool_output":"API_KEY=sk-proj-abc123def456ghi789jkl012mno345pqr678stu901","exit_code":"0"}'
     local output
 
-    output=$(echo "$input" | "$POST_TOOL_HOOK" 2>&1)
+    output=$(echo "$input" | CLAUDE_PROJECT_DIR="$PROJECT_ROOT" "$POST_TOOL_HOOK" 2>&1)
 
-    if echo "$output" | jq -e '.additionalContext | contains("SECURITY")' >/dev/null 2>&1; then
-        echo "  ✓ Detected OpenAI key pattern"
+    if echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("SECURITY")' >/dev/null 2>&1; then
+        echo "  ✓ Detected OpenAI key pattern (official schema)"
     else
-        test_fail "Should detect OpenAI key pattern" "post_tool_sensitive_data_detection"
+        test_fail "Should detect OpenAI key pattern in hookSpecificOutput.additionalContext" "post_tool_sensitive_data_detection"
         return
     fi
 
     # Test GitHub token pattern (exactly 36 characters after ghp_)
     input='{"tool_name":"Bash","tool_output":"TOKEN=ghp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","exit_code":"0"}'
-    output=$(echo "$input" | "$POST_TOOL_HOOK" 2>&1)
+    output=$(echo "$input" | CLAUDE_PROJECT_DIR="$PROJECT_ROOT" "$POST_TOOL_HOOK" 2>&1)
 
     if echo "$output" | jq -e '.systemMessage | contains("sensitive")' >/dev/null 2>&1; then
         echo "  ✓ Detected GitHub token pattern"
@@ -297,12 +318,12 @@ test_post_tool_large_output_warning() {
     local input="{\"tool_name\":\"Bash\",\"tool_output\":\"$large_output\",\"exit_code\":\"0\"}"
     local output
 
-    output=$(echo "$input" | "$POST_TOOL_HOOK" 2>&1)
+    output=$(echo "$input" | CLAUDE_PROJECT_DIR="$PROJECT_ROOT" "$POST_TOOL_HOOK" 2>&1)
 
-    if echo "$output" | jq -e '.additionalContext | contains("very large")' >/dev/null 2>&1; then
-        test_pass "Warned about large output"
+    if echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("very large")' >/dev/null 2>&1; then
+        test_pass "Warned about large output (official schema)"
     else
-        test_fail "Should warn about large output" "post_tool_large_output_warning"
+        test_fail "Should warn about large output in hookSpecificOutput.additionalContext" "post_tool_large_output_warning"
     fi
 }
 
@@ -321,10 +342,10 @@ test_post_tool_council_quorum_check() {
     local output
 
     # Set COUNCIL_DIR for the hook
-    output=$(COUNCIL_DIR="$test_council_dir" echo "$input" | "$POST_TOOL_HOOK" 2>&1)
+    output=$(COUNCIL_DIR="$test_council_dir" CLAUDE_PROJECT_DIR="$PROJECT_ROOT" echo "$input" | "$POST_TOOL_HOOK" 2>&1)
 
-    if echo "$output" | jq -e '.additionalContext | contains("quorum")' >/dev/null 2>&1; then
-        test_pass "Detected low quorum"
+    if echo "$output" | jq -e '.hookSpecificOutput.additionalContext | contains("quorum")' >/dev/null 2>&1; then
+        test_pass "Detected low quorum (official schema)"
     else
         # Quorum check only happens if output mentions council, so this might be expected
         test_pass "with warnings (quorum check may not trigger)"
@@ -340,7 +361,7 @@ test_post_tool_non_bash_tool() {
     local output
     local exit_code
 
-    output=$(echo "$input" | "$POST_TOOL_HOOK" 2>&1)
+    output=$(echo "$input" | CLAUDE_PROJECT_DIR="$PROJECT_ROOT" "$POST_TOOL_HOOK" 2>&1)
     exit_code=$?
 
     if [[ $exit_code -eq 0 ]] && [[ "$output" == "{}" ]]; then
@@ -357,7 +378,7 @@ test_post_tool_empty_output() {
     local output
     local exit_code
 
-    output=$(echo "$input" | "$POST_TOOL_HOOK" 2>&1)
+    output=$(echo "$input" | CLAUDE_PROJECT_DIR="$PROJECT_ROOT" "$POST_TOOL_HOOK" 2>&1)
     exit_code=$?
 
     if [[ $exit_code -eq 0 ]] && [[ "$output" == "{}" ]]; then
@@ -368,12 +389,12 @@ test_post_tool_empty_output() {
 }
 
 test_post_tool_json_output_structure() {
-    test_start "post_tool_json_output_structure" "Test JSON output structure compliance"
+    test_start "post_tool_json_output_structure" "Test official JSON output schema compliance"
 
     local input='{"tool_name":"Bash","tool_output":"Normal output","exit_code":"0"}'
     local output
 
-    output=$(echo "$input" | "$POST_TOOL_HOOK" 2>&1)
+    output=$(echo "$input" | CLAUDE_PROJECT_DIR="$PROJECT_ROOT" "$POST_TOOL_HOOK" 2>&1)
 
     # Validate JSON structure
     if echo "$output" | jq empty 2>/dev/null; then
@@ -383,16 +404,42 @@ test_post_tool_json_output_structure() {
         return
     fi
 
-    # Check for expected fields (even if null)
+    # Check for official schema structure
     local has_expected_fields=true
 
-    if ! echo "$output" | jq -e 'has("additionalContext")' >/dev/null 2>&1; then
-        echo "  ✗ Missing additionalContext field"
+    # Check for hookSpecificOutput wrapper
+    if ! echo "$output" | jq -e 'has("hookSpecificOutput")' >/dev/null 2>&1; then
+        echo "  ✗ Missing hookSpecificOutput wrapper"
         has_expected_fields=false
     else
-        echo "  ✓ Has additionalContext field"
+        echo "  ✓ Has hookSpecificOutput wrapper"
     fi
 
+    # Check for hookEventName
+    if ! echo "$output" | jq -e '.hookSpecificOutput.hookEventName == "PostToolUse"' >/dev/null 2>&1; then
+        echo "  ✗ Missing or incorrect hookEventName"
+        has_expected_fields=false
+    else
+        echo "  ✓ Has correct hookEventName"
+    fi
+
+    # Check for additionalContext in hookSpecificOutput
+    if ! echo "$output" | jq -e '.hookSpecificOutput | has("additionalContext")' >/dev/null 2>&1; then
+        echo "  ✗ Missing additionalContext in hookSpecificOutput"
+        has_expected_fields=false
+    else
+        echo "  ✓ Has additionalContext in hookSpecificOutput"
+    fi
+
+    # Check for continue field
+    if ! echo "$output" | jq -e 'has("continue")' >/dev/null 2>&1; then
+        echo "  ✗ Missing continue field"
+        has_expected_fields=false
+    else
+        echo "  ✓ Has continue field"
+    fi
+
+    # Check for systemMessage field
     if ! echo "$output" | jq -e 'has("systemMessage")' >/dev/null 2>&1; then
         echo "  ✗ Missing systemMessage field"
         has_expected_fields=false
@@ -401,9 +448,9 @@ test_post_tool_json_output_structure() {
     fi
 
     if $has_expected_fields; then
-        test_pass "JSON structure compliant"
+        test_pass "Official JSON schema compliant"
     else
-        test_fail "JSON structure incomplete" "post_tool_json_output_structure"
+        test_fail "JSON schema incomplete or incorrect" "post_tool_json_output_structure"
     fi
 }
 
