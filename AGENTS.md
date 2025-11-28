@@ -1,5 +1,65 @@
 # Repository Guidelines
 
+> **Purpose**: This file provides comprehensive development guidelines for the LLM Council Plugin. For quick project overview, see @CLAUDE.md.
+
+## Table of Contents
+
+**Quick Start**:
+- [Project Structure](#project-structure--module-organization) - Directory layout and organization
+- [Quick Development Workflow](#quick-development-workflow) - Essential commands for daily work
+
+**Plugin Development**:
+- [Plugin & Marketplace Metadata](#plugin--marketplace-metadata) - Manifest management and validation
+- [Slash Commands](#slash-commands) - Command development patterns and best practices
+- [Skills Best Practices](#skills-best-practices-2025) - Skill frontmatter, discovery, and documentation
+- [Hooks Best Practices](#hooks-best-practices-2025) - Lifecycle hooks and security model
+
+**Critical Patterns**:
+- [Path Resolution Best Practices](#path-resolution-best-practices) - Required for marketplace compatibility
+- [Council Working Directory Semantics](#council-working-directory-semantics-council) - `.council/` behavior invariants
+
+**Code Quality**:
+- [Coding Style & Naming](#coding-style--naming-conventions) - Shell, Markdown, and naming standards
+- [Testing Guidelines](#testing-guidelines) - Coverage requirements and test practices
+- [Commit & PR Guidelines](#commit--pull-request-guidelines) - Version control standards
+
+---
+
+## Quick Development Workflow
+
+**Before any commit**:
+```bash
+# 1. Run test suite (REQUIRED)
+./tests/test_runner.sh
+
+# 2. Validate manifests (if changed)
+claude plugin validate .
+
+# 3. Fix script permissions (if added new scripts)
+chmod +x hooks/*.sh skills/*/scripts/*.sh
+```
+
+**Path resolution template** (copy-paste for commands/skills):
+```bash
+# Standard pattern - works for marketplace + local dev
+if [[ -n "${COUNCIL_PLUGIN_ROOT:-}" ]]; then
+    UTILS_PATH="${COUNCIL_PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
+elif [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
+    UTILS_PATH="${CLAUDE_PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
+else
+    UTILS_PATH="${CLAUDE_PROJECT_DIR}/skills/council-orchestrator/scripts/council_utils.sh"
+fi
+source "$UTILS_PATH"
+```
+
+**Common tasks**:
+- New slash command → Add `commands/name.md`, update `plugin.json`
+- Modify hooks → Test with `./tests/test_hooks.sh`, review `hooks/README.md`
+- Change manifests → Update `docs/INSTALL.md` and `README.md` to match
+- Add scripts → Use `$(dirname "$0")` for internal paths, environment variables for plugin paths
+
+---
+
 ## Project Structure & Module Organization
 
 - `commands/` – Slash command definitions (e.g. `/council`, `/council-status`).
