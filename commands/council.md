@@ -34,7 +34,17 @@ When this command is invoked:
 
 1. **Reset working directory for this run**: Use the **Bash tool** to ensure the `.council/` directory only contains files from the current execution:
    ```bash
-   source ./skills/council-orchestrator/scripts/council_utils.sh
+   # Resolve path to council_utils.sh using environment variables
+   # This works for both local development and marketplace installations
+   if [[ -n "${COUNCIL_PLUGIN_ROOT:-}" ]]; then
+       UTILS_PATH="${COUNCIL_PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
+   elif [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
+       UTILS_PATH="${CLAUDE_PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
+   else
+       UTILS_PATH="${CLAUDE_PROJECT_DIR}/skills/council-orchestrator/scripts/council_utils.sh"
+   fi
+
+   source "$UTILS_PATH"
    council_cleanup || true   # ignore if directory does not exist
    council_init               # recreate .council/ for this run
    ```

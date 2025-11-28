@@ -10,6 +10,34 @@
 
 set -euo pipefail
 
+# Resolve plugin root directory
+# This function determines the correct plugin root based on the environment:
+# - Uses COUNCIL_PLUGIN_ROOT if set by SessionStart hook
+# - Falls back to CLAUDE_PLUGIN_ROOT for marketplace installations
+# - Falls back to CLAUDE_PROJECT_DIR for local development
+get_plugin_root() {
+    if [[ -n "${COUNCIL_PLUGIN_ROOT:-}" ]]; then
+        echo "$COUNCIL_PLUGIN_ROOT"
+    elif [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
+        echo "$CLAUDE_PLUGIN_ROOT"
+    elif [[ -n "${CLAUDE_PROJECT_DIR:-}" ]]; then
+        echo "$CLAUDE_PROJECT_DIR"
+    else
+        # Last resort: current directory (testing mode)
+        pwd
+    fi
+}
+
+# Resolve plugin script path
+# Usage: resolve_plugin_path "skills/council-orchestrator/scripts/query_claude.sh"
+# Returns: Absolute path to the plugin file
+resolve_plugin_path() {
+    local relative_path="$1"
+    local plugin_root
+    plugin_root=$(get_plugin_root)
+    echo "${plugin_root}/${relative_path}"
+}
+
 # Default working directory (relative to project root)
 COUNCIL_DIR="${COUNCIL_DIR:-.council}"
 

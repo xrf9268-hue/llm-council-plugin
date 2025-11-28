@@ -48,7 +48,9 @@ export GEMINI_API_KEY="your-key-here"
 
 **Minimum Quorum Check:**
 ```bash
-source ./skills/council-orchestrator/scripts/council_utils.sh
+# Resolve plugin root
+PLUGIN_ROOT="${COUNCIL_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR}}}"
+source "${PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
 can_council_proceed || {
     error_msg "Cannot proceed - no CLIs available"
     exit 1
@@ -66,7 +68,9 @@ Phase 1 consults all available LLM CLIs in parallel, capturing their independent
 
 #### Step 1.1: Initialize Working Directory
 ```bash
-source ./skills/council-orchestrator/scripts/council_utils.sh
+# Resolve plugin root
+PLUGIN_ROOT="${COUNCIL_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR}}}"
+source "${PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
 council_init  # Creates .council/ directory with 700 permissions
 ```
 
@@ -93,15 +97,21 @@ validate_user_input "$user_query" || {
 
 **Single-Model Mode (Claude only):**
 ```bash
+# Get plugin root for script paths
+PLUGIN_ROOT="${COUNCIL_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR}}}"
+
 if [[ "$MEMBER_COUNT" -eq 1 && "$CLAUDE_AVAILABLE" == "yes" ]]; then
     progress_msg "Single-model mode: Consulting Claude..."
-    ./skills/council-orchestrator/scripts/query_claude.sh "$query" \
+    "${PLUGIN_ROOT}/skills/council-orchestrator/scripts/query_claude.sh" "$query" \
         > .council/stage1_claude.txt 2>&1
 fi
 ```
 
 **Full Council Mode (2+ members):**
 ```bash
+# Get plugin root for script paths
+PLUGIN_ROOT="${COUNCIL_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR}}}"
+
 progress_msg "Full council mode: Consulting all available members in parallel..."
 
 # Track PIDs for background job management
@@ -110,7 +120,7 @@ PIDS=()
 # Launch Claude (required)
 if [[ "$CLAUDE_AVAILABLE" == "yes" ]]; then
     progress_msg "Consulting Claude..."
-    ./skills/council-orchestrator/scripts/query_claude.sh "$query" \
+    "${PLUGIN_ROOT}/skills/council-orchestrator/scripts/query_claude.sh" "$query" \
         > .council/stage1_claude.txt 2>&1 &
     PIDS+=($!)
 fi
@@ -118,7 +128,7 @@ fi
 # Launch Codex (optional)
 if [[ "$CODEX_AVAILABLE" == "yes" ]]; then
     progress_msg "Consulting OpenAI Codex..."
-    ./skills/council-orchestrator/scripts/query_codex.sh "$query" \
+    "${PLUGIN_ROOT}/skills/council-orchestrator/scripts/query_codex.sh" "$query" \
         > .council/stage1_openai.txt 2>&1 &
     PIDS+=($!)
 fi
@@ -126,7 +136,7 @@ fi
 # Launch Gemini (optional)
 if [[ "$GEMINI_AVAILABLE" == "yes" ]]; then
     progress_msg "Consulting Google Gemini..."
-    ./skills/council-orchestrator/scripts/query_gemini.sh "$query" \
+    "${PLUGIN_ROOT}/skills/council-orchestrator/scripts/query_gemini.sh" "$query" \
         > .council/stage1_gemini.txt 2>&1 &
     PIDS+=($!)
 fi
@@ -172,7 +182,9 @@ check_stage1_quorum || {
 
 **Using run_parallel.sh:**
 ```bash
-./skills/council-orchestrator/scripts/run_parallel.sh "$query" .council
+# Get plugin root for script paths
+PLUGIN_ROOT="${COUNCIL_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR}}}"
+"${PLUGIN_ROOT}/skills/council-orchestrator/scripts/run_parallel.sh" "$query" .council
 ```
 
 This script handles all of Phase 1 automatically.
@@ -239,13 +251,16 @@ GEMINI_REVIEW_PROMPT="${GEMINI_REVIEW_PROMPT//\{\{RESPONSE_B\}\}/$CODEX_RESPONSE
 
 #### Step 2.3: Execute Reviews in Parallel
 ```bash
+# Get plugin root for script paths
+PLUGIN_ROOT="${COUNCIL_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR}}}"
+
 progress_msg "Starting peer review phase..."
 PIDS=()
 
 # Claude reviews Codex + Gemini responses
 if [[ "$CLAUDE_AVAILABLE" == "yes" && ( -n "$CODEX_RESPONSE" || -n "$GEMINI_RESPONSE" ) ]]; then
     progress_msg "Claude reviewing peer responses..."
-    ./skills/council-orchestrator/scripts/query_claude.sh "$CLAUDE_REVIEW_PROMPT" \
+    "${PLUGIN_ROOT}/skills/council-orchestrator/scripts/query_claude.sh" "$CLAUDE_REVIEW_PROMPT" \
         > .council/stage2_review_claude.txt 2>&1 &
     PIDS+=($!)
 fi
@@ -253,7 +268,7 @@ fi
 # Codex reviews Claude + Gemini responses
 if [[ "$CODEX_AVAILABLE" == "yes" && ( -n "$CLAUDE_RESPONSE" || -n "$GEMINI_RESPONSE" ) ]]; then
     progress_msg "Codex reviewing peer responses..."
-    ./skills/council-orchestrator/scripts/query_codex.sh "$CODEX_REVIEW_PROMPT" \
+    "${PLUGIN_ROOT}/skills/council-orchestrator/scripts/query_codex.sh" "$CODEX_REVIEW_PROMPT" \
         > .council/stage2_review_openai.txt 2>&1 &
     PIDS+=($!)
 fi
@@ -261,7 +276,7 @@ fi
 # Gemini reviews Claude + Codex responses
 if [[ "$GEMINI_AVAILABLE" == "yes" && ( -n "$CLAUDE_RESPONSE" || -n "$CODEX_RESPONSE" ) ]]; then
     progress_msg "Gemini reviewing peer responses..."
-    ./skills/council-orchestrator/scripts/query_gemini.sh "$GEMINI_REVIEW_PROMPT" \
+    "${PLUGIN_ROOT}/skills/council-orchestrator/scripts/query_gemini.sh" "$GEMINI_REVIEW_PROMPT" \
         > .council/stage2_review_gemini.txt 2>&1 &
     PIDS+=($!)
 fi
@@ -290,7 +305,9 @@ validate_output ".council/stage2_review_gemini.txt" "Gemini Review" || true
 
 **Using run_peer_review.sh:**
 ```bash
-./skills/council-orchestrator/scripts/run_peer_review.sh "$original_question" .council
+# Get plugin root for script paths
+PLUGIN_ROOT="${COUNCIL_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR}}}"
+"${PLUGIN_ROOT}/skills/council-orchestrator/scripts/run_peer_review.sh" "$original_question" .council
 ```
 
 This script handles all of Phase 2 automatically.
@@ -306,8 +323,11 @@ The chairman sub-agent analyzes all Stage 1 responses and Stage 2 peer reviews t
 
 #### Step 3.1: Generate Chairman Prompt
 ```bash
+# Get plugin root for script paths
+PLUGIN_ROOT="${COUNCIL_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR}}}"
+
 # Use the chairman script to generate the invocation prompt
-CHAIRMAN_PROMPT=$(./skills/council-orchestrator/scripts/run_chairman.sh \
+CHAIRMAN_PROMPT=$("${PLUGIN_ROOT}/skills/council-orchestrator/scripts/run_chairman.sh" \
     "$original_question" \
     .council)
 ```
@@ -378,8 +398,11 @@ council_cleanup
 
 **Using run_chairman.sh:**
 ```bash
+# Get plugin root for script paths
+PLUGIN_ROOT="${COUNCIL_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR}}}"
+
 # Generate chairman prompt
-CHAIRMAN_PROMPT=$(./skills/council-orchestrator/scripts/run_chairman.sh \
+CHAIRMAN_PROMPT=$("${PLUGIN_ROOT}/skills/council-orchestrator/scripts/run_chairman.sh" \
     "$original_question" \
     .council)
 

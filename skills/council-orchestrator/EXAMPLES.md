@@ -21,24 +21,26 @@ command -v gemini && echo "✓ Gemini"
 
 ### Execution
 ```bash
-source ./skills/council-orchestrator/scripts/council_utils.sh
+# Resolve plugin root
+PLUGIN_ROOT="${COUNCIL_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR}}}"
+source "${PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
 
 # Phase 0: reset working directory for this run
 council_cleanup || true
 council_init
 
 # Phase 1: Parallel opinion collection
-./skills/council-orchestrator/scripts/run_parallel.sh \
+"${PLUGIN_ROOT}/skills/council-orchestrator/scripts/run_parallel.sh" \
     "Review this authentication implementation from a security perspective" \
     .council
 
 # Phase 2: Peer review
-./skills/council-orchestrator/scripts/run_peer_review.sh \
+"${PLUGIN_ROOT}/skills/council-orchestrator/scripts/run_peer_review.sh" \
     "Review this authentication implementation from a security perspective" \
     .council
 
 # Phase 3: Chairman synthesis
-CHAIRMAN_PROMPT=$(./skills/council-orchestrator/scripts/run_chairman.sh \
+CHAIRMAN_PROMPT=$("${PLUGIN_ROOT}/skills/council-orchestrator/scripts/run_chairman.sh" \
     "Review this authentication implementation from a security perspective" \
     .council)
 
@@ -103,7 +105,7 @@ council_cleanup || true
 council_init
 
 # Phase 1: Only available members participate
-./skills/council-orchestrator/scripts/run_parallel.sh \
+"${PLUGIN_ROOT}/skills/council-orchestrator/scripts/run_parallel.sh" \
     "What's the best approach for implementing rate limiting?" \
     .council
 ```
@@ -155,7 +157,7 @@ council_cleanup || true
 council_init
 
 # Single-model mode - no peer review
-./skills/council-orchestrator/scripts/query_claude.sh \
+"${PLUGIN_ROOT}/skills/council-orchestrator/scripts/query_claude.sh" \
     "Explain dependency injection patterns" \
     > .council/stage1_claude.txt 2>&1
 
@@ -285,7 +287,9 @@ Aborting council session for security
 ### Prevention
 ```bash
 # Always validate before processing
-source ./skills/council-orchestrator/scripts/council_utils.sh
+# Resolve plugin root
+PLUGIN_ROOT="${COUNCIL_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR}}}"
+source "${PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
 validate_user_input "$user_query" || {
     error_msg "Invalid input - council aborted"
     exit 1
@@ -405,7 +409,7 @@ claude chat "test query"
 ls -la skills/council-orchestrator/scripts/query_claude.sh
 
 # Check wrapper script output
-bash -x ./skills/council-orchestrator/scripts/query_claude.sh "test" 2>&1 | head -20
+bash -x "${PLUGIN_ROOT}/skills/council-orchestrator/scripts/query_claude.sh" "test" 2>&1 | head -20
 ```
 
 **Common Causes:**
@@ -533,12 +537,12 @@ set -euo pipefail
 PR_DIFF=$(git diff origin/main...HEAD)
 
 council_init
-./skills/council-orchestrator/scripts/run_parallel.sh \
+"${PLUGIN_ROOT}/skills/council-orchestrator/scripts/run_parallel.sh" \
     "Review this PR diff for issues: $PR_DIFF" \
     .council
 
 # Generate report
-./skills/council-orchestrator/scripts/run_chairman.sh \
+"${PLUGIN_ROOT}/skills/council-orchestrator/scripts/run_chairman.sh" \
     "Review this PR diff" \
     .council > pr_review.md
 
@@ -553,7 +557,7 @@ gh pr comment --body-file pr_review.md
 
 for file in $(git diff --name-only '*.py'); do
     code=$(cat "$file")
-    ./skills/council-orchestrator/scripts/run_parallel.sh \
+    "${PLUGIN_ROOT}/skills/council-orchestrator/scripts/run_parallel.sh" \
         "Review this Python code for bugs and best practices: $code" \
         ".council-$file"
 done

@@ -128,14 +128,17 @@ Use the council-orchestrator skill to answer: "What's the best approach for data
 For debugging or customization:
 
 ```bash
+# Resolve plugin root (works for both local dev and marketplace installations)
+PLUGIN_ROOT="${COUNCIL_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR}}}"
+
 # Stage 1: Collect opinions
-./skills/council-orchestrator/scripts/run_parallel.sh "Your question here"
+"${PLUGIN_ROOT}/skills/council-orchestrator/scripts/run_parallel.sh" "Your question here"
 
 # Stage 2: Run peer reviews
-./skills/council-orchestrator/scripts/run_peer_review.sh "Your question here" .council
+"${PLUGIN_ROOT}/skills/council-orchestrator/scripts/run_peer_review.sh" "Your question here" .council
 
 # Stage 3: Generate chairman prompt
-./skills/council-orchestrator/scripts/run_chairman.sh "Your question here" .council
+"${PLUGIN_ROOT}/skills/council-orchestrator/scripts/run_chairman.sh" "Your question here" .council
 ```
 
 ## Commands
@@ -162,9 +165,11 @@ Configuration is stored in `~/.council/config`. Available settings:
 ### Example Configuration
 
 ```bash
+# Resolve path to council_utils.sh
+PLUGIN_ROOT="${COUNCIL_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR}}}"
+source "${PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
+
 # Enable only Claude and Codex
-./skills/council-orchestrator/scripts/council_utils.sh
-source ./skills/council-orchestrator/scripts/council_utils.sh
 config_set enabled_members "claude,codex"
 
 # Adjust timeout

@@ -63,7 +63,9 @@ chmod +x hooks/*.sh skills/council-orchestrator/scripts/*.sh
 From the repository root:
 
 ```bash
-source ./skills/council-orchestrator/scripts/council_utils.sh && get_cli_status
+# Resolve path to council_utils.sh
+PLUGIN_ROOT="${COUNCIL_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR}}}"
+source "${PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh" && get_cli_status
 ```
 
 Confirm at least `claude` is reported as available.
@@ -135,17 +137,20 @@ Then:
 If you suspect CLI or bash issues, run scripts from the repo root:
 
 ```bash
+# Resolve plugin root
+PLUGIN_ROOT="${COUNCIL_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR}}}"
+
 # Single-model: Claude only
-./skills/council-orchestrator/scripts/query_claude.sh "terminal test"
+"${PLUGIN_ROOT}/skills/council-orchestrator/scripts/query_claude.sh" "terminal test"
 
 # Stage 1: parallel opinion collection
-./skills/council-orchestrator/scripts/run_parallel.sh "terminal test"
+"${PLUGIN_ROOT}/skills/council-orchestrator/scripts/run_parallel.sh" "terminal test"
 
 # Stage 2: peer review
-./skills/council-orchestrator/scripts/run_peer_review.sh "terminal test" .council
+"${PLUGIN_ROOT}/skills/council-orchestrator/scripts/run_peer_review.sh" "terminal test" .council
 
 # Stage 3: chairman synthesis prompt
-./skills/council-orchestrator/scripts/run_chairman.sh "terminal test" .council
+"${PLUGIN_ROOT}/skills/council-orchestrator/scripts/run_chairman.sh" "terminal test" .council
 ```
 
 Once these work reliably in the terminal, they should also work when invoked through `/council` inside Claude Code.

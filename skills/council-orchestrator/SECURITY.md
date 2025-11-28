@@ -29,7 +29,8 @@ if [[ "$query" == *$'\0'* ]]; then
 fi
 
 # Use utility function
-source ./skills/council-orchestrator/scripts/council_utils.sh
+PLUGIN_ROOT="${COUNCIL_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR}}}"
+source "${PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
 validate_user_input "$query" || exit 1
 ```
 
@@ -101,7 +102,8 @@ Ensure wrapper scripts have correct permissions:
 
 ```bash
 # Verify scripts are executable but not writable by others
-for script in ./skills/council-orchestrator/scripts/*.sh; do
+PLUGIN_ROOT="${COUNCIL_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR}}}"
+for script in "${PLUGIN_ROOT}"/skills/council-orchestrator/scripts/*.sh; do
     if [[ ! -x "$script" ]]; then
         echo "Error: $script is not executable" >&2
         echo "Fix with: chmod +x $script" >&2

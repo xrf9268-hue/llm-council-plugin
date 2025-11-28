@@ -24,7 +24,16 @@ Three-phase consensus protocol coordinating multiple LLMs for collaborative deci
 ### Prerequisites Check
 
 ```bash
-source ./skills/council-orchestrator/scripts/council_utils.sh
+# Resolve path to council_utils.sh
+if [[ -n "${COUNCIL_PLUGIN_ROOT:-}" ]]; then
+    UTILS_PATH="${COUNCIL_PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
+elif [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
+    UTILS_PATH="${CLAUDE_PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
+else
+    UTILS_PATH="${CLAUDE_PROJECT_DIR}/skills/council-orchestrator/scripts/council_utils.sh"
+fi
+
+source "$UTILS_PATH"
 get_cli_status
 ```
 
@@ -50,7 +59,8 @@ council_init
 validate_user_input "$user_query" || exit 1
 
 # Execute parallel opinion collection
-./skills/council-orchestrator/scripts/run_parallel.sh "$query" .council
+PLUGIN_ROOT=$(get_plugin_root)
+"${PLUGIN_ROOT}/skills/council-orchestrator/scripts/run_parallel.sh" "$query" .council
 ```
 
 **What it does:**
@@ -72,7 +82,8 @@ validate_user_input "$user_query" || exit 1
 
 **Quick Start:**
 ```bash
-./skills/council-orchestrator/scripts/run_peer_review.sh "$original_question" .council
+PLUGIN_ROOT=$(get_plugin_root)
+"${PLUGIN_ROOT}/skills/council-orchestrator/scripts/run_peer_review.sh" "$original_question" .council
 ```
 
 **What it does:**
@@ -103,7 +114,8 @@ validate_user_input "$user_query" || exit 1
 **Quick Start:**
 ```bash
 # Generate chairman invocation prompt
-CHAIRMAN_PROMPT=$(./skills/council-orchestrator/scripts/run_chairman.sh \
+PLUGIN_ROOT=$(get_plugin_root)
+CHAIRMAN_PROMPT=$("${PLUGIN_ROOT}/skills/council-orchestrator/scripts/run_chairman.sh" \
     "$original_question" \
     .council)
 
@@ -172,7 +184,16 @@ cat .council/final_report.md
 
 ```bash
 # Always validate user input before processing
-source ./skills/council-orchestrator/scripts/council_utils.sh
+# Resolve path to council_utils.sh
+if [[ -n "${COUNCIL_PLUGIN_ROOT:-}" ]]; then
+    UTILS_PATH="${COUNCIL_PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
+elif [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
+    UTILS_PATH="${CLAUDE_PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
+else
+    UTILS_PATH="${CLAUDE_PROJECT_DIR}/skills/council-orchestrator/scripts/council_utils.sh"
+fi
+
+source "$UTILS_PATH"
 validate_user_input "$user_query" || {
     error_msg "Invalid input - aborting for security"
     exit 1
@@ -254,7 +275,16 @@ The final output is the Chairman's Markdown report containing:
 
 ### Full Automated Run
 ```bash
-source ./skills/council-orchestrator/scripts/council_utils.sh
+# Resolve path to council_utils.sh
+if [[ -n "${COUNCIL_PLUGIN_ROOT:-}" ]]; then
+    UTILS_PATH="${COUNCIL_PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
+elif [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
+    UTILS_PATH="${CLAUDE_PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
+else
+    UTILS_PATH="${CLAUDE_PROJECT_DIR}/skills/council-orchestrator/scripts/council_utils.sh"
+fi
+
+source "$UTILS_PATH"
 
 # Phase 0: reset working directory for this run
 council_cleanup || true
@@ -262,13 +292,14 @@ council_init
 
 # Phase 1
 validate_user_input "$query" || exit 1
-./skills/council-orchestrator/scripts/run_parallel.sh "$query" .council
+PLUGIN_ROOT=$(get_plugin_root)
+"${PLUGIN_ROOT}/skills/council-orchestrator/scripts/run_parallel.sh" "$query" .council
 
 # Phase 2
-./skills/council-orchestrator/scripts/run_peer_review.sh "$query" .council
+"${PLUGIN_ROOT}/skills/council-orchestrator/scripts/run_peer_review.sh" "$query" .council
 
 # Phase 3
-CHAIRMAN_PROMPT=$(./skills/council-orchestrator/scripts/run_chairman.sh "$query" .council)
+CHAIRMAN_PROMPT=$("${PLUGIN_ROOT}/skills/council-orchestrator/scripts/run_chairman.sh" "$query" .council)
 # [Invoke chairman agent with $CHAIRMAN_PROMPT]
 
 # Output
@@ -277,7 +308,16 @@ cat .council/final_report.md
 
 ### Check Council Status
 ```bash
-source ./skills/council-orchestrator/scripts/council_utils.sh
+# Resolve path to council_utils.sh
+if [[ -n "${COUNCIL_PLUGIN_ROOT:-}" ]]; then
+    UTILS_PATH="${COUNCIL_PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
+elif [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
+    UTILS_PATH="${CLAUDE_PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
+else
+    UTILS_PATH="${CLAUDE_PROJECT_DIR}/skills/council-orchestrator/scripts/council_utils.sh"
+fi
+
+source "$UTILS_PATH"
 get_cli_status
 count_available_members
 can_council_proceed && echo "Council ready" || echo "Install more CLIs"

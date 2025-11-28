@@ -234,8 +234,8 @@ test_pre_tool_no_jq() {
 test_pre_tool_plugin_root_usage() {
     test_start "pre_tool_plugin_root_usage" "Test CLAUDE_PLUGIN_ROOT is used for plugin scripts"
 
-    # Simulate installed plugin scenario (marketplace installation)
-    local input='{"tool_name":"Bash","tool_input":{"command":"source skills/council-orchestrator/scripts/council_utils.sh"}}'
+    # Simulate installed plugin scenario (marketplace installation) with proper path resolution
+    local input='{"tool_name":"Bash","tool_input":{"command":"PLUGIN_ROOT=\"${CLAUDE_PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR}}\"; source \"${PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh\""}}'
     local output
     local exit_code
 
@@ -271,8 +271,8 @@ test_pre_tool_plugin_root_usage() {
 test_pre_tool_local_dev_fallback() {
     test_start "pre_tool_local_dev_fallback" "Test fallback to CLAUDE_PROJECT_DIR for local dev"
 
-    # Simulate local development (CLAUDE_PLUGIN_ROOT unset)
-    local input='{"tool_name":"Bash","tool_input":{"command":"source skills/council-orchestrator/scripts/council_utils.sh"}}'
+    # Simulate local development (CLAUDE_PLUGIN_ROOT unset) with proper path resolution
+    local input='{"tool_name":"Bash","tool_input":{"command":"PLUGIN_ROOT=\"${CLAUDE_PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR}}\"; source \"${PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh\""}}'
     local output
     local exit_code
 
