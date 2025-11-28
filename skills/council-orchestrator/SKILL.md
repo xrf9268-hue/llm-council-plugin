@@ -158,7 +158,7 @@ cat .council/final_report.md
 | **CLI missing** | Proceed with available members | See [quorum requirements](./REFERENCE.md#quorum-requirements) |
 | **Rate limit (429)** | Exponential backoff, retry once | [Rate limit handling](./REFERENCE.md#rate-limiting-http-429) |
 | **Empty output** | Mark member absent in report | [Empty output handling](./REFERENCE.md#empty-output) |
-| **Timeout (>60s)** | Terminate, mark absent | [Timeout configuration](./REFERENCE.md#timeout-60-seconds) |
+| **Timeout (>120s)** | Terminate, mark absent | [Timeout configuration](./REFERENCE.md#timeout-120-seconds) |
 | **Quorum failure** | Abort council session | [Quorum check](./REFERENCE.md#quorum-failure) |
 
 **Graceful Degradation:**

@@ -464,15 +464,15 @@ validate_output ".council/stage1_claude.txt" "Claude" || {
 - Rate limiting (check stderr for 429)
 - CLI bug or crash
 
-### Timeout (>60 seconds)
+### Timeout (>120 seconds)
 
 **Implementation:**
 ```bash
-timeout 60s ./scripts/query_claude.sh "$query" \
+timeout 120s ./scripts/query_claude.sh "$query" \
     > .council/stage1_claude.txt 2>&1 || {
     exit_code=$?
     if [[ $exit_code -eq 124 ]]; then
-        error_msg "Claude timed out after 60 seconds"
+        error_msg "Claude timed out after 120 seconds"
         mark_member_absent "Claude" "Timeout"
     fi
 }
@@ -480,7 +480,7 @@ timeout 60s ./scripts/query_claude.sh "$query" \
 
 **Configurable Timeout:**
 ```bash
-TIMEOUT_SECONDS="${COUNCIL_CLI_TIMEOUT:-60}"
+TIMEOUT_SECONDS="${COUNCIL_CLI_TIMEOUT:-120}"
 timeout "${TIMEOUT_SECONDS}s" ./scripts/query_claude.sh "$query"
 ```
 
@@ -510,7 +510,7 @@ check_stage1_quorum || {
 | `COUNCIL_DIR` | `.council` | Working directory for council files |
 | `COUNCIL_MIN_QUORUM` | `2` | Minimum responses required |
 | `COUNCIL_MAX_PROMPT_LENGTH` | `10000` | Maximum query length (chars) |
-| `COUNCIL_CLI_TIMEOUT` | `60` | CLI timeout (seconds) |
+| `COUNCIL_CLI_TIMEOUT` | `120` | CLI timeout (seconds) |
 | `COUNCIL_CONFIG_FILE` | `~/.council/config` | Config file location |
 
 ### Configuration File
@@ -528,7 +528,7 @@ timeout=120
 **Usage:**
 ```bash
 # Get config value
-timeout=$(config_get "timeout" "60")
+timeout=$(config_get "timeout" "120")
 
 # Set config value
 config_set "enabled_members" "claude,gemini"

@@ -10,7 +10,7 @@
 set -euo pipefail
 
 # Configuration
-TIMEOUT_SECONDS="${CLAUDE_TIMEOUT:-60}"
+TIMEOUT_SECONDS="${CLAUDE_TIMEOUT:-120}"
 MAX_RETRIES="${CLAUDE_MAX_RETRIES:-1}"
 
 # Find timeout command (macOS uses gtimeout from coreutils, Linux uses timeout)
@@ -71,7 +71,7 @@ query_claude() {
 
         exit_code=$cmd_result
 
-        # Check for rate limit (exit code may vary, but we handle retryable errors)
+        # Check for timeout and other errors (exit code may vary, but we handle retryable errors)
         if [[ $exit_code -eq 124 ]]; then
             echo "Warning: Claude CLI timed out after ${TIMEOUT_SECONDS}s" >&2
         elif [[ $exit_code -eq 1 ]]; then

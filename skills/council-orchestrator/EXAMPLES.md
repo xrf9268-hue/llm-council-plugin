@@ -186,7 +186,7 @@ Displaying Claude's response directly:
 ## Scenario 4: Error Recovery - CLI Timeout
 
 ### Situation
-Claude and Codex respond normally, but Gemini times out after 60 seconds.
+Claude and Codex respond normally, but Gemini times out after 120 seconds.
 
 ### Output
 ```
@@ -198,11 +198,11 @@ Claude and Codex respond normally, but Gemini times out after 60 seconds.
   ⏳ Codex: consulting...
   ⏳ Gemini: consulting...
 
-  ✓ Claude: responded (12.3s)
-  ✓ Codex: responded (15.7s)
-  ⏳ Gemini: still waiting... (45s)
-  ⏳ Gemini: still waiting... (60s)
-  ✗ Gemini: timeout after 60 seconds
+  ✓ Claude: responded (42.3s)
+  ✓ Codex: responded (48.7s)
+  ⏳ Gemini: still waiting... (90s)
+  ⏳ Gemini: still waiting... (120s)
+  ✗ Gemini: timeout after 120 seconds
 
 Council Status: Partial failure (2/3 members responded)
 
