@@ -15,7 +15,16 @@ When this command is invoked, use the **Bash tool** to run diagnostic checks and
 
 Execute using Bash tool:
 ```bash
-source ./skills/council-orchestrator/scripts/council_utils.sh
+# Resolve path to council_utils.sh
+if [[ -n "${COUNCIL_PLUGIN_ROOT:-}" ]]; then
+    UTILS_PATH="${COUNCIL_PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
+elif [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
+    UTILS_PATH="${CLAUDE_PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
+else
+    UTILS_PATH="${CLAUDE_PROJECT_DIR}/skills/council-orchestrator/scripts/council_utils.sh"
+fi
+
+source "$UTILS_PATH"
 get_cli_status
 ```
 
@@ -47,7 +56,16 @@ gemini --version 2>/dev/null || echo "Version unknown"
 
 Execute using Bash tool:
 ```bash
-source ./skills/council-orchestrator/scripts/council_utils.sh
+# Resolve path to council_utils.sh
+if [[ -n "${COUNCIL_PLUGIN_ROOT:-}" ]]; then
+    UTILS_PATH="${COUNCIL_PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
+elif [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
+    UTILS_PATH="${CLAUDE_PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
+else
+    UTILS_PATH="${CLAUDE_PROJECT_DIR}/skills/council-orchestrator/scripts/council_utils.sh"
+fi
+
+source "$UTILS_PATH"
 config_list
 ```
 

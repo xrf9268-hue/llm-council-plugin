@@ -33,7 +33,16 @@ When this command is invoked, use the **Bash tool** to execute the appropriate c
 
 Execute using Bash tool:
 ```bash
-source ./skills/council-orchestrator/scripts/council_utils.sh
+# Resolve path to council_utils.sh
+if [[ -n "${COUNCIL_PLUGIN_ROOT:-}" ]]; then
+    UTILS_PATH="${COUNCIL_PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
+elif [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
+    UTILS_PATH="${CLAUDE_PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
+else
+    UTILS_PATH="${CLAUDE_PROJECT_DIR}/skills/council-orchestrator/scripts/council_utils.sh"
+fi
+
+source "$UTILS_PATH"
 config_list
 ```
 
@@ -64,7 +73,16 @@ When user provides `set <key> <value>`, interpret the arguments as:
 
 Execute using Bash tool:
 ```bash
-source ./skills/council-orchestrator/scripts/council_utils.sh
+# Resolve path to council_utils.sh
+if [[ -n "${COUNCIL_PLUGIN_ROOT:-}" ]]; then
+    UTILS_PATH="${COUNCIL_PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
+elif [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
+    UTILS_PATH="${CLAUDE_PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
+else
+    UTILS_PATH="${CLAUDE_PROJECT_DIR}/skills/council-orchestrator/scripts/council_utils.sh"
+fi
+
+source "$UTILS_PATH"
 config_set "$2" "$3"
 ```
 

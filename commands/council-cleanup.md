@@ -28,7 +28,16 @@ When this command is invoked:
      - Any other temporary artifacts under `.council/`
    - Use the **Bash tool** to execute:
      ```bash
-     source ./skills/council-orchestrator/scripts/council_utils.sh
+     # Resolve path to council_utils.sh
+     if [[ -n "${COUNCIL_PLUGIN_ROOT:-}" ]]; then
+         UTILS_PATH="${COUNCIL_PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
+     elif [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
+         UTILS_PATH="${CLAUDE_PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
+     else
+         UTILS_PATH="${CLAUDE_PROJECT_DIR}/skills/council-orchestrator/scripts/council_utils.sh"
+     fi
+
+     source "$UTILS_PATH"
      council_cleanup
      ```
    - Confirm back to the user that the council working directory has been cleaned, e.g.:
