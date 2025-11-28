@@ -36,7 +36,8 @@
         "./commands/council.md",
         "./commands/council-help.md",
         "./commands/council-status.md",
-        "./commands/council-config.md"
+        "./commands/council-config.md",
+        "./commands/council-cleanup.md"
       ],
       "skills": [
         "./skills/council-orchestrator/"

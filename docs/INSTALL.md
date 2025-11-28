@@ -112,6 +112,8 @@ You should see:
 - `.council/` directory present.
 - `stage1_claude.txt` non-empty, containing the answer to your test query.
 
+Each new `/council` run will reset the `.council/` directory for the new session, so files from previous sessions will not contaminate the current run. When you no longer need any session files, you can delete the working directory with the `/council-cleanup` command.
+
 ## Debugging & Logs
 
 ### Use Claude Code debugging tools

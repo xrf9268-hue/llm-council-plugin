@@ -313,6 +313,97 @@ test_unit_config_functions() {
     rm -f "$test_config" 2>/dev/null || true
 }
 
+test_unit_council_cleanup() {
+    test_start "unit_council_cleanup" "Test council_cleanup removes working directory and is idempotent"
+    setup_test_env
+
+    # Ensure directory and a dummy file exist
+    echo "dummy" > "$COUNCIL_DIR/dummy.txt"
+
+    # Call council_cleanup via utils script
+    (
+        export COUNCIL_DIR="$TEST_COUNCIL_DIR"
+        source "$UTILS_SCRIPT" 2>/dev/null
+        council_cleanup
+    ) 2>/dev/null
+
+    if [[ -d "$COUNCIL_DIR" ]]; then
+        test_fail "council_cleanup should remove COUNCIL_DIR" "unit_council_cleanup"
+        cleanup_test_env
+        return
+    else
+        echo "  ✓ council_cleanup removed working directory"
+    fi
+
+    # Idempotency: calling again should be a no-op and not recreate the directory
+    (
+        export COUNCIL_DIR="$TEST_COUNCIL_DIR"
+        source "$UTILS_SCRIPT" 2>/dev/null
+        council_cleanup
+    ) 2>/dev/null
+
+    if [[ -d "$COUNCIL_DIR" ]]; then
+        test_fail "council_cleanup should not recreate directory on subsequent calls" "unit_council_cleanup"
+    else
+        echo "  ✓ council_cleanup is idempotent when directory is absent"
+        test_pass
+    fi
+
+    cleanup_test_env
+}
+
+test_unit_check_final_report() {
+    test_start "unit_check_final_report" "Test check_final_report behavior for missing, empty, and valid reports"
+    setup_test_env
+
+    local result
+
+    # No report file -> should fail
+    result=$(
+        export COUNCIL_DIR="$TEST_COUNCIL_DIR"
+        source "$UTILS_SCRIPT" 2>/dev/null
+        check_final_report 2>&1 && echo "pass" || echo "fail"
+    )
+    if [[ "$result" == *"fail"* ]]; then
+        echo "  ✓ Fails when final report is missing"
+    else
+        test_fail "check_final_report should fail when report is missing" "unit_check_final_report"
+        cleanup_test_env
+        return
+    fi
+
+    # Empty report file -> should fail
+    : > "$COUNCIL_DIR/final_report.md"
+    result=$(
+        export COUNCIL_DIR="$TEST_COUNCIL_DIR"
+        source "$UTILS_SCRIPT" 2>/dev/null
+        check_final_report 2>&1 && echo "pass" || echo "fail"
+    )
+    if [[ "$result" == *"fail"* ]]; then
+        echo "  ✓ Fails when final report is empty"
+    else
+        test_fail "check_final_report should fail when report is empty" "unit_check_final_report"
+        cleanup_test_env
+        return
+    fi
+
+    # Non-empty report file -> should pass
+    echo "Final report content" > "$COUNCIL_DIR/final_report.md"
+    result=$(
+        export COUNCIL_DIR="$TEST_COUNCIL_DIR"
+        source "$UTILS_SCRIPT" 2>/dev/null
+        check_final_report 2>&1 && echo "pass" || echo "fail"
+    )
+    if [[ "$result" == *"pass"* ]]; then
+        echo "  ✓ Succeeds when final report exists and is non-empty"
+        test_pass
+    else
+        test_fail "check_final_report should pass when report exists and is non-empty" "unit_check_final_report"
+    fi
+
+    cleanup_test_env
+}
+
 # ============================================================================
 # Integration Tests
 # ============================================================================
@@ -646,6 +737,8 @@ run_all_tests() {
     test_unit_sanitize_prompt
     test_unit_check_quorum
     test_unit_config_functions
+    test_unit_council_cleanup
+    test_unit_check_final_report
 
     echo -e "\n${BLUE}▶ Running Integration Tests${NC}"
     test_integration_parallel_script_exists

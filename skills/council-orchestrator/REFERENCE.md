@@ -362,16 +362,17 @@ else
 fi
 ```
 
-#### Step 3.5: Cleanup
+#### Step 3.5: Cleanup (Optional)
 ```bash
-# After retrieving the report, clean up
+# Optional: when you no longer need this session's files,
+# remove the council working directory and all generated artifacts.
 council_cleanup
 
 # Or manually:
 # rm -rf .council
 ```
 
-**Note**: The cleanup step removes all intermediate files. Ensure you've captured or presented the final report to the user before cleanup.
+**Note**: The cleanup step removes all intermediate files, including `final_report.md`. Ensure you've captured or presented the final report to the user and do not intend to reuse the `.council/` directory before running cleanup. The `/council` command is responsible for resetting `.council/` at the start of each new council session, so end-of-session cleanup is not required for correctness.
 
 ### Automated Script
 

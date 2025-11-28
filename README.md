@@ -103,6 +103,18 @@ In Claude Code, use the `/council` command:
 /council "How should I implement rate limiting in a Node.js API?"
 ```
 
+Each `/council` run:
+
+- Resets the `.council/` working directory for this session.
+- Runs opinion collection, peer review, and chairman synthesis.
+- Displays the final report in chat and saves it to `.council/final_report.md`.
+
+When you no longer need files from previous sessions, you can clean up with:
+
+```
+/council-cleanup
+```
+
 #### Using the Skill Directly
 
 Invoke the `council-orchestrator` skill for more control:
@@ -131,6 +143,7 @@ For debugging or customization:
 | Command | Description |
 |---------|-------------|
 | `/council <query>` | Summon the council for a technical question |
+| `/council-cleanup` | Delete the `.council/` working directory and all session files |
 | `/council-help` | Display usage information and examples |
 | `/council-status` | Check CLI availability and configuration |
 | `/council-config` | Manage council settings |
@@ -172,6 +185,8 @@ During execution, the council creates files in the `.council/` directory:
 ├── stage2_review_gemini.txt   # Gemini's peer review
 └── final_report.md        # Chairman's synthesized verdict
 ```
+
+The `.council/` directory always represents the **most recent** `/council` run. A new `/council` invocation will reset this directory before starting a fresh session, so previous session files are never mixed into a new deliberation. Use `/council-cleanup` if you want to remove the directory entirely when you no longer need the latest session's files.
 
 ## Final Report Format
 

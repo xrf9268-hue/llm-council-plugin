@@ -120,11 +120,8 @@ $CHAIRMAN_PROMPT
 
 **After chairman completes:**
 ```bash
-# Retrieve final report
+# Retrieve final report for this run
 cat .council/final_report.md
-
-# Cleanup
-council_cleanup
 ```
 
 **What it does:**
@@ -168,7 +165,7 @@ council_cleanup
 
 - **Input Validation**: All user queries validated before passing to external CLIs
 - **CLI Verification**: Ensure external CLIs (codex, gemini, claude) are from trusted sources
-- **Temporary Files**: All data in `.council/` automatically cleaned up after synthesis
+- **Temporary Files**: All data in `.council/` is stored in a dedicated working directory. By default, files are preserved after synthesis so users can review or reuse the final report. Use `council_cleanup` or `/council-cleanup` to explicitly remove these files when no longer needed.
 - **Proper Quoting**: All bash scripts use proper variable quoting to prevent injection
 
 ### Usage
@@ -259,8 +256,11 @@ The final output is the Chairman's Markdown report containing:
 ```bash
 source ./skills/council-orchestrator/scripts/council_utils.sh
 
-# Phase 1
+# Phase 0: reset working directory for this run
+council_cleanup || true
 council_init
+
+# Phase 1
 validate_user_input "$query" || exit 1
 ./skills/council-orchestrator/scripts/run_parallel.sh "$query" .council
 
@@ -273,7 +273,6 @@ CHAIRMAN_PROMPT=$(./skills/council-orchestrator/scripts/run_chairman.sh "$query"
 
 # Output
 cat .council/final_report.md
-council_cleanup
 ```
 
 ### Check Council Status

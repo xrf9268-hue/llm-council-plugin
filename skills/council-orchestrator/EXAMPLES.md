@@ -23,7 +23,8 @@ command -v gemini && echo "✓ Gemini"
 ```bash
 source ./skills/council-orchestrator/scripts/council_utils.sh
 
-# Initialize working directory
+# Phase 0: reset working directory for this run
+council_cleanup || true
 council_init
 
 # Phase 1: Parallel opinion collection
@@ -44,11 +45,8 @@ CHAIRMAN_PROMPT=$(./skills/council-orchestrator/scripts/run_chairman.sh \
 # Invoke chairman agent with the generated prompt
 # (Use Task tool with council-chairman agent)
 
-# Retrieve and display final report
+# Retrieve and display final report for this run
 cat .council/final_report.md
-
-# Cleanup
-council_cleanup
 ```
 
 ### Expected Output
@@ -100,6 +98,8 @@ command -v gemini && echo "✓ Gemini"
 
 ### Execution
 ```bash
+# Initialize working directory (reset if needed)
+council_cleanup || true
 council_init
 
 # Phase 1: Only available members participate
@@ -150,6 +150,8 @@ command -v claude && echo "✓ Claude"
 
 ### Execution
 ```bash
+# Initialize working directory (reset if needed)
+council_cleanup || true
 council_init
 
 # Single-model mode - no peer review
@@ -160,6 +162,7 @@ council_init
 # Display response directly
 cat .council/stage1_claude.txt
 
+# Optional: when you no longer need this session's files, clean up
 council_cleanup
 ```
 
@@ -470,7 +473,8 @@ ls -la .council/
 - Always validate user input before processing
 - Check CLI status before starting council session
 - Use parallel execution for Phase 1 and Phase 2
-- Clean up `.council/` directory after retrieving report
+- Reset the `.council/` directory before starting a new council session (e.g., via `/council` or `council_cleanup` + `council_init`)
+- Clean up the `.council/` directory when you no longer need the current session's files (e.g., via `/council-cleanup` or `council_cleanup`)
 - Monitor for rate limits and implement backoff
 - Include absent member notes in final report
 
@@ -478,7 +482,7 @@ ls -la .council/
 
 - Skip input validation for "trusted" sources
 - Run CLIs sequentially (use parallel execution)
-- Leave `.council/` directory populated (cleanup after use)
+- Assume `.council/` contains data from multiple sessions (it should always represent the most recent run)
 - Ignore rate limit errors (implement retry logic)
 - Modify Stage 1/2 files during processing
 - Run council without at least 1 working CLI

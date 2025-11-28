@@ -67,6 +67,22 @@ All commands should specify appropriate models in frontmatter based on complexit
 - **Haiku 4.5** offers fast, economical performance for straightforward operations like displaying config, running status checks, or showing help
 - Omitting `model` allows commands to inherit from the user's session settings, providing maximum flexibility
 
+### Council Working Directory Semantics (`.council/`)
+
+These invariants are important for both user experience and testability:
+
+- The `.council/` directory must always represent the **most recent** `/council` run.  
+  - The `/council` command is responsible for resetting the working directory at the **start** of each session (e.g. `council_cleanup || true` followed by `council_init`), not at the end.
+- Do **not** automatically run `council_cleanup` at the end of a successful `/council` flow in commands, skills, or examples.  
+  - Cleanup is an explicit user choice via `/council-cleanup` or a manual `council_cleanup` invocation.
+- User-facing messages must accurately reflect file state:  
+  - Never claim that `final_report.md` is saved in `.council/` if you have just removed the directory.  
+  - When you do delete `.council/`, clearly state that all session files (including `final_report.md`) are gone.
+- If you later implement historical report retention, use a separate configurable directory (e.g. `COUNCIL_REPORTS_DIR`) rather than overloading `.council/`.  
+  - `.council/` remains a scratch space for the latest run only.
+
+When changing `/council`, `/council-cleanup`, or the `council-orchestrator` skill, keep these invariants intact and update tests in `tests/test_runner.sh` if behavior around `.council/` changes.
+
 ### Argument Handling Best Practices
 
 - **Use `$ARGUMENTS`** when the command takes a single conceptual input (e.g., a question, a query string)
