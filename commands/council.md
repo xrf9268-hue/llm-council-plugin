@@ -40,8 +40,38 @@ When this command is invoked:
        UTILS_PATH="${COUNCIL_PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
    elif [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
        UTILS_PATH="${CLAUDE_PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
-   else
+   elif [[ -n "${CLAUDE_PROJECT_DIR:-}" ]]; then
        UTILS_PATH="${CLAUDE_PROJECT_DIR}/skills/council-orchestrator/scripts/council_utils.sh"
+   else
+       # Try standard installation locations as fallback
+       for candidate in \
+           "$HOME/.claude/plugins/cache/llm-council-plugin/skills/council-orchestrator/scripts/council_utils.sh" \
+           "$HOME/.claude/plugins/llm-council-plugin/skills/council-orchestrator/scripts/council_utils.sh" \
+           "$HOME/.config/claude/plugins/llm-council-plugin/skills/council-orchestrator/scripts/council_utils.sh"; do
+           if [[ -f "$candidate" ]]; then
+               UTILS_PATH="$candidate"
+               break
+           fi
+       done
+   fi
+
+   # Verify we found the utility script
+   if [[ -z "${UTILS_PATH:-}" ]] || [[ ! -f "$UTILS_PATH" ]]; then
+       echo "❌ Error: Cannot locate council_utils.sh"
+       echo ""
+       echo "Diagnostic Information:"
+       echo "  COUNCIL_PLUGIN_ROOT: ${COUNCIL_PLUGIN_ROOT:-[not set]}"
+       echo "  CLAUDE_PLUGIN_ROOT: ${CLAUDE_PLUGIN_ROOT:-[not set]}"
+       echo "  CLAUDE_PROJECT_DIR: ${CLAUDE_PROJECT_DIR:-[not set]}"
+       echo ""
+       echo "This usually means the plugin environment variables are not properly initialized."
+       echo ""
+       echo "🔧 Quick Fix: Run this command to set the plugin path manually:"
+       echo "   export COUNCIL_PLUGIN_ROOT=\"\$HOME/.claude/plugins/cache/llm-council-plugin\""
+       echo ""
+       echo "If the plugin is installed elsewhere, adjust the path accordingly."
+       echo "Then try running /council again."
+       exit 1
    fi
 
    source "$UTILS_PATH"

@@ -38,8 +38,25 @@ if [[ -n "${COUNCIL_PLUGIN_ROOT:-}" ]]; then
     UTILS_PATH="${COUNCIL_PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
 elif [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
     UTILS_PATH="${CLAUDE_PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
-else
+elif [[ -n "${CLAUDE_PROJECT_DIR:-}" ]]; then
     UTILS_PATH="${CLAUDE_PROJECT_DIR}/skills/council-orchestrator/scripts/council_utils.sh"
+else
+    # Try standard installation locations
+    for candidate in \
+        "$HOME/.claude/plugins/cache/llm-council-plugin/skills/council-orchestrator/scripts/council_utils.sh" \
+        "$HOME/.claude/plugins/llm-council-plugin/skills/council-orchestrator/scripts/council_utils.sh"; do
+        if [[ -f "$candidate" ]]; then
+            UTILS_PATH="$candidate"
+            break
+        fi
+    done
+fi
+
+# Verify path exists
+if [[ -z "${UTILS_PATH:-}" ]] || [[ ! -f "$UTILS_PATH" ]]; then
+    echo "❌ Error: Cannot locate council utilities"
+    echo "Please set COUNCIL_PLUGIN_ROOT to your plugin installation path."
+    exit 1
 fi
 
 source "$UTILS_PATH"
@@ -71,17 +88,8 @@ When user provides `set <key> <value>`, interpret the arguments as:
 - `$2` – configuration key
 - `$3` – configuration value
 
-Execute using Bash tool:
+Execute using Bash tool (reuse the same UTILS_PATH resolution from "Show Configuration"):
 ```bash
-# Resolve path to council_utils.sh
-if [[ -n "${COUNCIL_PLUGIN_ROOT:-}" ]]; then
-    UTILS_PATH="${COUNCIL_PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
-elif [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
-    UTILS_PATH="${CLAUDE_PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
-else
-    UTILS_PATH="${CLAUDE_PROJECT_DIR}/skills/council-orchestrator/scripts/council_utils.sh"
-fi
-
 source "$UTILS_PATH"
 config_set "$2" "$3"
 ```
