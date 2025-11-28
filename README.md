@@ -329,13 +329,8 @@ llm-council-plugin/
 ├── .claude-plugin/
 │   ├── plugin.json              # Plugin manifest
 │   └── marketplace.json         # Marketplace metadata
-├── agents/
-│   └── council-chairman.md      # Chairman sub-agent definition
-├── commands/
-│   ├── council.md               # /council command
-│   ├── council-help.md          # /council-help command
-│   ├── council-status.md        # /council-status command
-│   └── council-config.md        # /council-config command
+├── agents/                      # Sub-agent definitions (chairman, etc.)
+├── commands/                    # Slash commands (/council, /council-cleanup, ...)
 ├── skills/
 │   └── council-orchestrator/
 │       ├── SKILL.md             # Core workflow (Level 2)
@@ -343,31 +338,22 @@ llm-council-plugin/
 │       ├── EXAMPLES.md          # Usage scenarios (Level 3)
 │       ├── SECURITY.md          # Security best practices (Level 3)
 │       ├── METADATA.md          # Version and licensing (Level 3)
-│       ├── scripts/
-│       │   ├── council_utils.sh   # Shared utilities
-│       │   ├── query_claude.sh    # Claude CLI wrapper
-│       │   ├── query_codex.sh     # Codex CLI wrapper
-│       │   ├── query_gemini.sh    # Gemini CLI wrapper
-│       │   ├── run_parallel.sh    # Stage 1 orchestration
-│       │   ├── run_peer_review.sh # Stage 2 orchestration
-│       │   └── run_chairman.sh    # Stage 3 preparation
-│       └── templates/
-│           ├── review_prompt.txt     # Peer review template
-│           └── chairman_prompt.txt   # Chairman invocation template
+│       ├── scripts/             # Orchestration and CLI wrapper scripts
+│       └── templates/           # Peer review + chairman prompt templates
 ├── hooks/
 │   ├── hooks.json               # Hook configuration
 │   ├── session-start.sh         # SessionStart hook (environment setup)
 │   ├── pre-tool.sh              # Pre-execution validation
 │   ├── post-tool.sh             # Post-execution verification
 │   └── README.md                # Hook documentation and troubleshooting
-├── scripts/
-│   └── verify-plugin-version.sh # Plugin cache diagnostic tool
+├── scripts/                     # Development and diagnostic scripts
 ├── docs/
 │   ├── INSTALL.md               # Installation and setup guide
 │   └── TROUBLESHOOTING.md       # Comprehensive troubleshooting guide
 ├── tests/
 │   ├── test_runner.sh           # Main test suite
-│   └── test_hooks.sh            # Hook-specific tests
+│   ├── test_hooks.sh            # Hook-specific tests
+│   └── test_codex_integration.sh# Codex integration tests
 ├── CLAUDE.md                    # Project context for Claude Code
 ├── AGENTS.md                    # Repository guidelines and standards
 ├── header.png                   # Header image
