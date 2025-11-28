@@ -382,9 +382,116 @@ Using incorrect JSON schema format. The official Claude Code hooks API requires 
 **Key Takeaway:**
 Hook schema compliance is critical. Even minor deviations from the official format can cause unexpected blocking behavior. Always validate against official Claude Code documentation rather than relying on third-party examples or documentation.
 
+## Path Resolution Best Practices
+
+### Overview
+
+All plugin code (commands, skills, hooks, documentation examples) must use **absolute paths** resolved via environment variables to work correctly in both local development and marketplace installations.
+
+**The Problem**: Relative paths like `./skills/council-orchestrator/scripts/council_utils.sh` only work when the current working directory equals the plugin root. For marketplace-installed plugins, `cwd` is the user's project directory, causing "No such file or directory" errors.
+
+**The Solution**: Use Claude Code's official environment variables with a fallback chain for maximum compatibility.
+
+### Standard Pattern for Commands and Skills
+
+All slash commands, skill documentation, and user-facing examples should use this pattern:
+
+```bash
+# Resolve plugin root with fallback chain
+# Works for marketplace installations, local development, and all edge cases
+if [[ -n "${COUNCIL_PLUGIN_ROOT:-}" ]]; then
+    UTILS_PATH="${COUNCIL_PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
+elif [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
+    UTILS_PATH="${CLAUDE_PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
+else
+    UTILS_PATH="${CLAUDE_PROJECT_DIR}/skills/council-orchestrator/scripts/council_utils.sh"
+fi
+
+source "$UTILS_PATH"
+```
+
+**Compact form for documentation examples**:
+```bash
+PLUGIN_ROOT="${COUNCIL_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR}}}"
+source "${PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
+```
+
+### Environment Variable Hierarchy
+
+1. **`COUNCIL_PLUGIN_ROOT`** (First Priority)
+   - Set by SessionStart hook (line 24 of `hooks/session-start.sh`)
+   - Persisted via `CLAUDE_ENV_FILE` for entire session
+   - Most convenient - avoids repeated fallback checks
+   - Only available after session initialization
+
+2. **`CLAUDE_PLUGIN_ROOT`** (Second Priority)
+   - Provided by Claude Code for marketplace installations
+   - Always correct for installed plugins
+   - Empty during local development (plugin directory = project directory)
+
+3. **`CLAUDE_PROJECT_DIR`** (Fallback)
+   - Provided by Claude Code for user's project root
+   - Used during local development when `CLAUDE_PLUGIN_ROOT` is unset
+   - Should only be used as last resort for plugin files
+
+### When to Use Each Pattern
+
+**For Plugin Files** (commands, skills, scripts, hooks):
+- ✅ Use the standard pattern above
+- ✅ Always check `COUNCIL_PLUGIN_ROOT` first, then `CLAUDE_PLUGIN_ROOT`
+- ❌ Never use relative paths like `./skills/...`
+- ❌ Never use `CLAUDE_PROJECT_DIR` alone (fails for marketplace installations)
+
+**For User Project Files** (`.council/`, session data, user code):
+- ✅ Use `CLAUDE_PROJECT_DIR` directly
+- Example: `${CLAUDE_PROJECT_DIR}/.council/stage1/claude_opinion.md`
+
+### Examples by Context
+
+**Slash Commands** (`commands/*.md`):
+```bash
+# In Implementation Instructions section
+if [[ -n "${COUNCIL_PLUGIN_ROOT:-}" ]]; then
+    UTILS_PATH="${COUNCIL_PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
+elif [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
+    UTILS_PATH="${CLAUDE_PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
+else
+    UTILS_PATH="${CLAUDE_PROJECT_DIR}/skills/council-orchestrator/scripts/council_utils.sh"
+fi
+
+source "$UTILS_PATH"
+council_init
+```
+
+**Skill Documentation** (`skills/*/SKILL.md`, `REFERENCE.md`, `EXAMPLES.md`):
+```bash
+# In code examples
+PLUGIN_ROOT="${COUNCIL_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR}}}"
+"${PLUGIN_ROOT}/skills/council-orchestrator/scripts/run_parallel.sh" "$query" .council
+```
+
+**Helper Scripts** (`skills/*/scripts/*.sh`):
+```bash
+# Internal scripts can use $(dirname "$0") for relative resolution
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+UTILS_PATH="${SCRIPT_DIR}/council_utils.sh"
+source "$UTILS_PATH"
+```
+
+**Hooks** (`hooks/*.sh`):
+See dedicated section below.
+
+### Historical Context
+
+In November 2025, we discovered systematic use of relative paths (`./skills/...`) across 52 instances in 14 files, causing complete plugin failure for marketplace installations. The fix implemented the standard pattern above across all commands, skills, and documentation.
+
+For detailed technical analysis, see:
+- `ROOT_CAUSE_ANALYSIS.md` - Full technical investigation
+- `REPETITION_ANALYSIS.md` - Why path resolution appears in many files (execution context isolation)
+
 ### Path Resolution in Hooks
 
-Use the correct environment variable for the file type:
+Hooks require special handling due to their execution context. Use the correct environment variable for the file type:
 
 1. **Plugin Infrastructure** (hooks, skills, scripts bundled with plugin):
    - Use `CLAUDE_PLUGIN_ROOT`
