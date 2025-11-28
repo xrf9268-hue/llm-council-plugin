@@ -12,20 +12,66 @@ set -euo pipefail
 
 # Resolve plugin root directory
 # This function determines the correct plugin root based on the environment:
-# - Uses COUNCIL_PLUGIN_ROOT if set by SessionStart hook
+# - Uses COUNCIL_PLUGIN_ROOT if set by SessionStart hook (preferred)
 # - Falls back to CLAUDE_PLUGIN_ROOT for marketplace installations
 # - Falls back to CLAUDE_PROJECT_DIR for local development
+# - Performs dynamic discovery if all environment variables are unset
 get_plugin_root() {
+    # Method 1: COUNCIL_PLUGIN_ROOT (set by SessionStart hook)
     if [[ -n "${COUNCIL_PLUGIN_ROOT:-}" ]]; then
         echo "$COUNCIL_PLUGIN_ROOT"
-    elif [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
-        echo "$CLAUDE_PLUGIN_ROOT"
-    elif [[ -n "${CLAUDE_PROJECT_DIR:-}" ]]; then
-        echo "$CLAUDE_PROJECT_DIR"
-    else
-        # Last resort: current directory (testing mode)
-        pwd
+        return 0
     fi
+
+    # Method 2: CLAUDE_PLUGIN_ROOT (provided by Claude Code)
+    if [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]]; then
+        echo "$CLAUDE_PLUGIN_ROOT"
+        return 0
+    fi
+
+    # Method 3: CLAUDE_PROJECT_DIR (for local development)
+    if [[ -n "${CLAUDE_PROJECT_DIR:-}" ]] && \
+       [[ -f "${CLAUDE_PROJECT_DIR}/.claude-plugin/plugin.json" ]]; then
+        echo "$CLAUDE_PROJECT_DIR"
+        return 0
+    fi
+
+    # Method 4: Dynamic discovery from script location
+    # This script is at: <plugin_root>/skills/council-orchestrator/scripts/council_utils.sh
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    # Go up three levels: scripts/ -> council-orchestrator/ -> skills/ -> plugin_root/
+    local candidate="${script_dir%/skills/council-orchestrator/scripts}"
+
+    # Verify this is the plugin root by checking for signature files
+    if [[ -f "${candidate}/.claude-plugin/plugin.json" ]] && \
+       [[ -d "${candidate}/skills/council-orchestrator" ]]; then
+        echo "$candidate"
+        return 0
+    fi
+
+    # Method 5: Check standard Claude Code plugin cache locations
+    local home="${HOME:-}"
+    if [[ -n "$home" ]]; then
+        for candidate_dir in \
+            "$home/.claude/plugins/cache/llm-council-plugin" \
+            "$home/.claude/plugins/llm-council-plugin" \
+            "$home/.config/claude/plugins/llm-council-plugin"; do
+            if [[ -f "${candidate_dir}/.claude-plugin/plugin.json" ]] && \
+               [[ -d "${candidate_dir}/skills/council-orchestrator" ]]; then
+                echo "$candidate_dir"
+                return 0
+            fi
+        done
+    fi
+
+    # Method 6: Last resort - current directory (testing mode)
+    # This will likely fail, but we return something rather than empty
+    echo "Error: Could not resolve plugin root directory" >&2
+    echo "Error: Tried COUNCIL_PLUGIN_ROOT, CLAUDE_PLUGIN_ROOT, CLAUDE_PROJECT_DIR, script location, and standard paths" >&2
+    echo "Error: Please set COUNCIL_PLUGIN_ROOT manually: export COUNCIL_PLUGIN_ROOT=/path/to/llm-council-plugin" >&2
+    pwd
+    return 1
 }
 
 # Resolve plugin script path

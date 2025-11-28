@@ -4,10 +4,68 @@
 # Follows official Claude Code SessionStart hook best practices
 set -euo pipefail
 
+# Discover plugin installation path dynamically
+# This is critical for environments where CLAUDE_PLUGIN_ROOT is not set
+discover_plugin_root() {
+  local plugin_root=""
+
+  # Method 1: Use CLAUDE_PLUGIN_ROOT if available (standard case)
+  if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
+    plugin_root="$CLAUDE_PLUGIN_ROOT"
+    echo "Debug: Using CLAUDE_PLUGIN_ROOT=$plugin_root" >&2
+    echo "$plugin_root"
+    return 0
+  fi
+
+  # Method 2: Derive from this script's location
+  # This hook is at: <plugin_root>/hooks/session-start.sh
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  local candidate="${script_dir%/hooks}"
+
+  # Verify this is the plugin root by checking for signature files
+  if [ -f "${candidate}/.claude-plugin/plugin.json" ] && \
+     [ -d "${candidate}/skills/council-orchestrator" ]; then
+    plugin_root="$candidate"
+    echo "Debug: Discovered plugin root from script location: $plugin_root" >&2
+    echo "$plugin_root"
+    return 0
+  fi
+
+  # Method 3: Check standard Claude Code plugin cache locations
+  local home="${HOME:-}"
+  if [ -n "$home" ]; then
+    for candidate_dir in \
+      "$home/.claude/plugins/cache/llm-council-plugin" \
+      "$home/.claude/plugins/llm-council-plugin" \
+      "$home/.config/claude/plugins/llm-council-plugin"; do
+      if [ -f "${candidate_dir}/.claude-plugin/plugin.json" ] && \
+         [ -d "${candidate_dir}/skills/council-orchestrator" ]; then
+        plugin_root="$candidate_dir"
+        echo "Debug: Found plugin in standard location: $plugin_root" >&2
+        echo "$plugin_root"
+        return 0
+      fi
+    done
+  fi
+
+  # Method 4: Fall back to CLAUDE_PROJECT_DIR for local development
+  if [ -n "${CLAUDE_PROJECT_DIR:-}" ] && \
+     [ -f "${CLAUDE_PROJECT_DIR}/.claude-plugin/plugin.json" ]; then
+    plugin_root="$CLAUDE_PROJECT_DIR"
+    echo "Debug: Using CLAUDE_PROJECT_DIR for local dev: $plugin_root" >&2
+    echo "$plugin_root"
+    return 0
+  fi
+
+  echo "Error: Could not discover plugin installation path" >&2
+  return 1
+}
+
 # Setup persistent environment variables for the session
 setup_environment() {
   if [ -z "${CLAUDE_ENV_FILE:-}" ]; then
-    echo "Warning: CLAUDE_ENV_FILE not available" >&2
+    echo "Warning: CLAUDE_ENV_FILE not available - environment variables will not persist" >&2
     return 0
   fi
 
@@ -19,9 +77,14 @@ setup_environment() {
   # Prevent shell cwd reset messages
   echo "export CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1" >> "$CLAUDE_ENV_FILE"
 
-  # Set plugin root for convenience
-  if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
-    echo "export COUNCIL_PLUGIN_ROOT=\"${CLAUDE_PLUGIN_ROOT}\"" >> "$CLAUDE_ENV_FILE"
+  # Discover and set plugin root (critical for path resolution)
+  local discovered_root
+  if discovered_root=$(discover_plugin_root); then
+    echo "export COUNCIL_PLUGIN_ROOT=\"${discovered_root}\"" >> "$CLAUDE_ENV_FILE"
+    echo "Debug: COUNCIL_PLUGIN_ROOT set to: $discovered_root" >&2
+  else
+    echo "Warning: Could not set COUNCIL_PLUGIN_ROOT - path resolution may fail" >&2
+    echo "Warning: You may need to manually set: export COUNCIL_PLUGIN_ROOT=/path/to/plugin" >&2
   fi
 }
 
