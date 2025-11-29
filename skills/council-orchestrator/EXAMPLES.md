@@ -309,7 +309,7 @@ mkdir -p .council
 
 # Query each CLI manually
 echo "Your question" | claude chat > .council/stage1_claude.txt 2>&1
-echo "Your question" | codex query > .council/stage1_openai.txt 2>&1
+echo "Your question" | codex exec --skip-git-repo-check > .council/stage1_openai.txt 2>&1
 echo "Your question" | gemini ask > .council/stage1_gemini.txt 2>&1
 ```
 
@@ -329,7 +329,7 @@ $(cat .council/stage1_gemini.txt)
 EOF
 
 # Query each CLI with review prompt
-cat review_prompt.txt | codex query > .council/stage2_review_openai.txt
+cat review_prompt.txt | codex exec --skip-git-repo-check > .council/stage2_review_openai.txt
 ```
 
 ---
