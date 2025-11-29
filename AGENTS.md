@@ -119,12 +119,14 @@ All commands should specify appropriate models in frontmatter based on complexit
 
 | Model | Model ID | Use Case | Examples |
 |-------|----------|----------|----------|
+| **Opus 4.5** | `claude-opus-4-5-20251101` | Maximum reasoning capability, complex multi-step autonomous tasks, critical architectural decisions requiring absolute correctness | Advanced consensus synthesis, complex multi-agent coordination |
 | **Sonnet 4.5** | `claude-sonnet-4-5-20250929` | Complex orchestration, multi-step workflows, advanced reasoning | `/council` (multi-model coordination) |
 | **Haiku 4.5** | `claude-haiku-4-5-20251001` | Simple commands, configuration, status checks, help docs | `/council-config`, `/council-status`, `/council-help` |
 | **Omit** | - | Inherit from user settings (good default for flexibility) | Commands that should adapt to user preference |
 
 **Rationale**:
-- **Sonnet 4.5** provides the strongest reasoning for complex tasks requiring coordination, synthesis, and multi-step logic
+- **Opus 4.5** delivers maximum reasoning capability for mission-critical tasks requiring absolute correctness, complex multi-step logic chains, and long-horizon autonomous workflows. Use when the quality of reasoning justifies the higher cost (15% improvement on long-horizon tasks vs Sonnet, first model to score 80%+ on SWE-bench Verified).
+- **Sonnet 4.5** provides excellent reasoning for complex tasks requiring coordination, synthesis, and multi-step logic. It delivers 90-95% of Opus capability at significantly reduced cost, making it ideal for most complex orchestration tasks.
 - **Haiku 4.5** offers fast, economical performance for straightforward operations like displaying config, running status checks, or showing help
 - Omitting `model` allows commands to inherit from the user's session settings, providing maximum flexibility
 
