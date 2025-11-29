@@ -39,13 +39,31 @@ The LLM Council summons multiple AI models to deliberate on your technical quest
 
 ### Prerequisites
 
-You need at least one CLI installed. For full council functionality, install all three:
+#### Required Dependencies
 
-| CLI | Installation | Required |
-|-----|--------------|----------|
-| Claude | [code.claude.com](https://code.claude.com/docs/en/setup) | Yes |
-| Codex | `npm install -g @openai/codex` | No |
-| Gemini | `npm install -g @google/gemini-cli` | No |
+Before installing the plugin, ensure these critical dependencies are available:
+
+| Dependency | Purpose | Installation |
+|------------|---------|--------------|
+| **jq** | JSON parsing for hook security validations | **macOS**: `brew install jq`<br>**Ubuntu/Debian**: `sudo apt-get install jq`<br>**Alpine**: `apk add jq`<br>**Verify**: `jq --version` |
+| **Claude CLI** | Required for council deliberations | See [code.claude.com/docs/setup](https://code.claude.com/docs/en/setup) |
+
+**⚠️ IMPORTANT**: Without `jq`, all security validations are disabled:
+- ❌ Command injection detection
+- ❌ Sensitive data leak detection (API keys, tokens)
+- ❌ Council quorum verification
+- ❌ Command length limits
+
+#### Optional Dependencies (for multi-model council)
+
+For full three-model council functionality, install these optional CLIs:
+
+| CLI | Installation | Purpose |
+|-----|--------------|---------|
+| Codex | `npm install -g @openai/codex` | Adds OpenAI perspective |
+| Gemini | `npm install -g @google/gemini-cli` | Adds Google perspective |
+
+**Note**: The plugin works with Claude CLI alone, but multi-model deliberation provides richer perspectives.
 
 ### Installation
 
