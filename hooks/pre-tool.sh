@@ -51,11 +51,11 @@ else
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
     "permissionDecision": "allow",
-    "permissionDecisionReason": "jq not available, validation skipped",
+    "permissionDecisionReason": "jq not available - command validation disabled for security",
     "updatedInput": null
   },
   "continue": true,
-  "systemMessage": "Warning: jq not available, hook validation skipped"
+  "systemMessage": "⚠️  SECURITY: jq missing - command validation DISABLED. Install: brew install jq (macOS) | apt-get install jq (Linux) | apk add jq (Alpine)"
 }
 EOF
     exit 0

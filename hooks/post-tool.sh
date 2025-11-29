@@ -51,10 +51,10 @@ else
 {
   "hookSpecificOutput": {
     "hookEventName": "PostToolUse",
-    "additionalContext": "Post-tool validation skipped (jq not available)"
+    "additionalContext": "Post-tool security analysis disabled (jq not available). The following checks are skipped: rate limit detection, auth error detection, sensitive data leak detection, council quorum verification."
   },
   "continue": true,
-  "systemMessage": "Warning: jq not available, post-tool validation skipped"
+  "systemMessage": "⚠️  SECURITY: jq missing - output analysis DISABLED. Install: brew install jq (macOS) | apt-get install jq (Linux) | apk add jq (Alpine)"
 }
 EOF
     exit 0

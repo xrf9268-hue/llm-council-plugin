@@ -99,10 +99,49 @@ validate_dependencies() {
     fi
   done
 
-  # Report missing dependencies (non-blocking)
+  # Report missing dependencies with enhanced security context
   if [ ${#missing_deps[@]} -gt 0 ]; then
-    echo "Warning: Missing dependencies: ${missing_deps[*]}" >&2
-    echo "Some council features may be limited" >&2
+    # Check if jq specifically is missing (critical security dependency)
+    local jq_missing=false
+    for dep in "${missing_deps[@]}"; do
+      if [[ "$dep" == "jq" ]]; then
+        jq_missing=true
+        break
+      fi
+    done
+
+    if [[ "$jq_missing" == true ]]; then
+      # Critical security warning for missing jq
+      cat >&2 <<'EOF'
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️  SECURITY WARNING: Critical Dependency Missing
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Missing: jq (JSON parser)
+
+Without jq, these security features are DISABLED:
+  ❌ Command injection detection
+  ❌ Sensitive data leak detection (API keys, tokens)
+  ❌ Council quorum verification
+  ❌ Command length limits (50,000 chars)
+  ❌ System path protection warnings
+
+🔧 Install jq to enable full security:
+  macOS:          brew install jq
+  Ubuntu/Debian:  sudo apt-get install jq
+  Alpine:         apk add jq
+  Verify:         jq --version
+
+📚 More info: https://github.com/xrf9268-hue/llm-council-plugin#prerequisites
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EOF
+    else
+      # Standard warning for other dependencies
+      echo "Warning: Missing dependencies: ${missing_deps[*]}" >&2
+      echo "Some features may be limited" >&2
+    fi
   fi
 }
 

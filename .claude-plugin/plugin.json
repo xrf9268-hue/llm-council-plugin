@@ -25,7 +25,8 @@
     "./commands/council-help.md",
     "./commands/council-status.md",
     "./commands/council-config.md",
-    "./commands/council-cleanup.md"
+    "./commands/council-cleanup.md",
+    "./commands/council-verify-deps.md"
   ],
   "agents": [
     "./agents/council-chairman.md"

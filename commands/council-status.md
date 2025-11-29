@@ -91,6 +91,33 @@ Present as:
 - Quorum requirement: Y members
 - Status: [✅ Met / ⚠️ Not Met]
 
+### Step 4.5: Security Status
+
+Execute using Bash tool:
+```bash
+# Check jq availability
+if command -v jq &>/dev/null; then
+    echo "✅ Hook Security: ENABLED (jq installed)"
+    echo "   Version: $(jq --version 2>&1)"
+else
+    echo "⚠️  Hook Security: DISABLED (jq not installed)"
+    echo "   Without jq, the following protections are disabled:"
+    echo "     • Command injection detection"
+    echo "     • Sensitive data leak detection"
+    echo "     • Council quorum verification"
+    echo "     • Command length limits"
+    echo ""
+    echo "   Install jq to enable security features:"
+    echo "     macOS:          brew install jq"
+    echo "     Ubuntu/Debian:  sudo apt-get install jq"
+    echo "     Alpine:         apk add jq"
+fi
+```
+
+Display jq status:
+- ✅ ENABLED if jq is available
+- ⚠️ DISABLED if jq is missing (with installation instructions)
+
 ### Step 5: Recent Session (if exists)
 
 If `.council/` directory exists from a previous session:
@@ -114,6 +141,11 @@ CLI Availability:
 Council Readiness:
   Members   : X/3 available
   Quorum    : [✅ Ready / ⚠️ Not Ready] (minimum Y required)
+
+Security Status:
+  Hook Security: [✅ ENABLED / ⚠️ DISABLED]
+  jq Version   : [version if available]
+  [If disabled: Installation instructions]
 
 Configuration:
   Config    : ~/.council/config

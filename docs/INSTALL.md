@@ -6,11 +6,64 @@ This guide explains how to install the LLM Council plugin for Claude Code and ho
 
 ## Prerequisites
 
-- Claude Code installed and signed in (VS Code or JetBrains).
-- At least one CLI installed:
-  - **Required**: Claude CLI – see https://code.claude.com/docs/en/setup
-  - **Optional**: `codex`, `gemini` for full multi-model council.
-- Public GitHub repository: `https://github.com/xrf9268-hue/llm-council-plugin.git`.
+### Required Dependencies
+
+Before installing or using the plugin, ensure these critical dependencies are available:
+
+#### 1. jq - JSON Parser (CRITICAL for Security)
+
+**⚠️ Without jq, all security validations are DISABLED**
+
+The plugin's security hooks require `jq` for JSON parsing. Without it, the following protections are bypassed:
+- Command injection detection
+- Sensitive data leak detection (API keys, tokens)
+- Council quorum verification
+- Command length limits (50,000 chars)
+
+**Installation**:
+```bash
+# macOS
+brew install jq
+
+# Ubuntu/Debian
+sudo apt-get install jq
+
+# Alpine
+apk add jq
+
+# Verify installation
+jq --version
+```
+
+Expected output: `jq-1.5` or higher
+
+#### 2. Claude Code
+
+Claude Code must be installed and signed in (VS Code or JetBrains).
+
+#### 3. Claude CLI
+
+The Claude CLI is required for council deliberations.
+
+**Installation**: See https://code.claude.com/docs/en/setup
+
+**Verify**: `claude --version`
+
+### Optional Dependencies (for Multi-Model Council)
+
+For full three-model council functionality, install these optional CLIs:
+
+- **codex** - OpenAI Codex CLI for additional perspective
+  - Install: `npm install -g @openai/codex`
+
+- **gemini** - Google Gemini CLI for additional perspective
+  - Install: `npm install -g @google/gemini-cli`
+
+**Note**: The plugin works with Claude CLI alone, but multi-model deliberation provides richer perspectives.
+
+### Repository Access
+
+- Public GitHub repository: `https://github.com/xrf9268-hue/llm-council-plugin.git`
 
 ## Installation
 
@@ -67,7 +120,105 @@ ls -l hooks/*.sh skills/council-orchestrator/scripts/*.sh | head -5
 
 ## Verify Installation
 
-### Check CLI dependencies
+### Check Dependencies (RECOMMENDED - Run First)
+
+Before proceeding with plugin installation, verify all required dependencies are installed:
+
+```bash
+#!/bin/bash
+# Dependency verification script
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  LLM Council Plugin - Dependency Check"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# Track overall status
+ALL_REQUIRED_PRESENT=true
+
+# Check jq (CRITICAL for security)
+echo "🔍 Checking Required Dependencies..."
+echo ""
+if command -v jq &>/dev/null; then
+    JQ_VERSION=$(jq --version 2>&1)
+    echo "✅ jq is installed: $JQ_VERSION"
+    echo "   → Security validations: ENABLED"
+else
+    echo "❌ jq is NOT installed"
+    echo "   → Security validations: DISABLED"
+    echo "   → Command injection detection: OFF"
+    echo "   → Sensitive data leak detection: OFF"
+    echo "   → Council quorum verification: OFF"
+    echo ""
+    echo "   Install jq:"
+    echo "     macOS:          brew install jq"
+    echo "     Ubuntu/Debian:  sudo apt-get install jq"
+    echo "     Alpine:         apk add jq"
+    ALL_REQUIRED_PRESENT=false
+fi
+
+echo ""
+
+# Check Claude CLI (REQUIRED)
+if command -v claude &>/dev/null; then
+    CLAUDE_VERSION=$(claude --version 2>&1 | head -n1)
+    echo "✅ Claude CLI is installed: $CLAUDE_VERSION"
+else
+    echo "❌ Claude CLI is NOT installed"
+    echo "   See: https://code.claude.com/docs/en/setup"
+    ALL_REQUIRED_PRESENT=false
+fi
+
+echo ""
+echo "🔍 Checking Optional Dependencies (for multi-model council)..."
+echo ""
+
+# Check optional CLIs
+OPTIONAL_PRESENT=0
+
+if command -v codex &>/dev/null; then
+    echo "✅ Codex CLI is installed"
+    OPTIONAL_PRESENT=$((OPTIONAL_PRESENT + 1))
+else
+    echo "ℹ️  Codex CLI is not installed (optional)"
+    echo "   Install: npm install -g @openai/codex"
+fi
+
+echo ""
+
+if command -v gemini &>/dev/null; then
+    echo "✅ Gemini CLI is installed"
+    OPTIONAL_PRESENT=$((OPTIONAL_PRESENT + 1))
+else
+    echo "ℹ️  Gemini CLI is not installed (optional)"
+    echo "   Install: npm install -g @google/gemini-cli"
+fi
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  Summary"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+if [[ "$ALL_REQUIRED_PRESENT" == true ]]; then
+    echo "✅ All required dependencies are installed"
+    echo "📊 Council Capability: $((OPTIONAL_PRESENT + 1)) models available"
+    if [[ $OPTIONAL_PRESENT -eq 0 ]]; then
+        echo "   → Single-model mode (Claude only)"
+    elif [[ $OPTIONAL_PRESENT -eq 1 ]]; then
+        echo "   → Two-model deliberation"
+    else
+        echo "   → Full three-model council"
+    fi
+else
+    echo "❌ Missing required dependencies - install them before proceeding"
+    exit 1
+fi
+```
+
+**Run this script before installation to ensure all required dependencies are available.**
+
+### Check CLI dependencies (Legacy Method)
 
 From the repository root:
 
