@@ -325,7 +325,9 @@ cat .council/stage1_claude.txt
 
 #### Hooks Not Running
 
-Ensure hooks are configured in `hooks/hooks.json`. If you get permission errors, verify scripts are executable:
+Ensure hooks are configured in `hooks/hooks.json`. If `/doctor` reports "Duplicate hooks file detected", remove `"hooks": "./hooks/hooks.json"` from `.claude-plugin/plugin.json` or point it at a separate file (Claude Code v2.0.73+ auto-loads `hooks/hooks.json`).
+
+If you get permission errors, verify scripts are executable:
 
 ```bash
 # Check if scripts have execute permissions

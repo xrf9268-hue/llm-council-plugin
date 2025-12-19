@@ -33,6 +33,5 @@
   ],
   "skills": [
     "./skills/council-orchestrator/"
-  ],
-  "hooks": "./hooks/hooks.json"
+  ]
 }

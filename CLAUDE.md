@@ -92,12 +92,7 @@ source "${PLUGIN_ROOT}/skills/council-orchestrator/scripts/council_utils.sh"
 - When changing manifests, also update `docs/INSTALL.md` and `README.md`
 - Validate before publishing: `claude plugin validate .`
 
-**Critical**: Hooks are **NOT auto-discovered** (unlike commands/agents/skills). Always include:
-```json
-{
-  "hooks": "./hooks/hooks.json"
-}
-```
+**Note**: Standard component directories are auto-discovered. Claude Code v2.0.73+ auto-loads `hooks/hooks.json`; `plugin.json` `hooks` should only reference additional hook files (e.g. `./hooks/extra-hooks.json`) or inline config. Do NOT point `hooks` to `./hooks/hooks.json` or you'll get duplicate loading errors.
 
 **Official References**:
 - [Plugin Manifest Reference](https://code.claude.com/docs/en/plugins-reference.md)

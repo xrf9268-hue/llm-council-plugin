@@ -337,6 +337,16 @@ claude plugin install llm-council-plugin@llm-council
 
 ---
 
+### Duplicate hooks file detected
+
+If `/doctor` shows `"Duplicate hooks file detected: ./hooks/hooks.json ..."`, your manifest is pointing to the standard hooks file. Claude Code v2.0.73+ auto-loads `hooks/hooks.json`.
+
+**Fix:**
+- Remove `"hooks": "./hooks/hooks.json"` from `.claude-plugin/plugin.json`, or
+- Point `hooks` at a separate file (e.g. `./hooks/extra-hooks.json`) if you need additional hooks.
+
+Restart Claude Code after changing the manifest.
+
 ### Other Common Issues
 
 - **`/council` missing from autocomplete**:

@@ -99,6 +99,23 @@ The old hooks incorrectly used regex patterns that matched legitimate shell oper
 
 ---
 
+### Issue: "Duplicate hooks file detected: ./hooks/hooks.json ..."
+
+**Symptom:**
+```
+Plugin hook error: Duplicate hooks file detected: ./hooks/hooks.json resolves to already-loaded file
+```
+
+**Root Cause:**
+Claude Code v2.0.73+ auto-loads `hooks/hooks.json`. If `plugin.json` points `hooks` at the same file, it gets loaded twice.
+
+**Solution:**
+- Remove `"hooks": "./hooks/hooks.json"` from `.claude-plugin/plugin.json`, or
+- Point `hooks` at a separate file (e.g. `./hooks/extra-hooks.json`) if you need additional hooks
+- Restart Claude Code to reload the manifest
+
+---
+
 ### Issue: Hook validation warnings
 
 **Symptom:**

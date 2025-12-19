@@ -15,6 +15,8 @@ All hooks follow [Claude Code hooks best practices](https://code.claude.com/docs
 
 Hooks are registered via `hooks.json` and target Bash tool executions. They run automatically during agent execution with a 30-second timeout.
 
+Note: Claude Code v2.0.73+ auto-loads `hooks/hooks.json` for plugins. If you set `plugin.json` `hooks`, it must point to a different file (e.g. `./hooks/extra-hooks.json`) or inline config.
+
 ```json
 {
   "hooks": {

@@ -75,7 +75,8 @@ Keep new files in these folders unless there is a strong reason to introduce a n
 
 ## Plugin & Marketplace Metadata
 
-- `plugin.json` describes the plugin itself; keep `commands`, `agents`, `skills`, and `hooks` paths relative and starting with `./`.
+- `plugin.json` describes the plugin itself; component paths are optional and must be relative (starting with `./`) when used.
+- `plugin.json` `hooks` must NOT point to `./hooks/hooks.json`; use it only for additional hook files (e.g. `./hooks/extra-hooks.json`) or inline config.
 - `marketplace.json` must follow the official marketplace schema (`name`/`owner`/`plugins`) and expose the `llm-council` marketplace with the `llm-council-plugin` entry.
 - When changing `.claude-plugin/*` manifests or installation flows, also update `docs/INSTALL.md` and the Installation section in `README.md` to stay in sync.
 - `plugin.json` must use an `author` **object** (not a string), and should not introduce extra top-level keys beyond the official plugin manifest schema (for example, do not add `strict` here).
@@ -83,16 +84,16 @@ Keep new files in these folders unless there is a strong reason to introduce a n
 - Paths in manifests should use the current filenames (e.g. `"./commands/council.md"` for the main `/council` command).
 - Before publishing changes to manifests, run `claude plugin validate .` locally to catch schema errors early.
 
-**Critical - Auto-Discovery vs Explicit Registration:**
+**Auto-Discovery Behavior:**
 
 | Component | Auto-Discovery | Recommendation |
 |-----------|---------------|----------------|
-| Commands (`./commands/`) | ✅ Yes | Explicit recommended |
-| Agents (`./agents/`) | ✅ Yes | Explicit recommended |
-| Skills (`./skills/`) | ✅ Yes | Explicit recommended |
-| **Hooks** (`./hooks/hooks.json`) | ❌ **NO** | **REQUIRED** |
+| Commands (`./commands/`) | ✅ Yes | Explicit optional |
+| Agents (`./agents/`) | ✅ Yes | Explicit optional |
+| Skills (`./skills/`) | ✅ Yes | Explicit optional |
+| **Hooks** (`./hooks/hooks.json`) | ✅ Yes | `hooks` only for extra files (not `./hooks/hooks.json`) |
 
-**Never remove the `hooks` field** from `plugin.json` - hooks are NOT auto-discovered and will silently fail to load.
+**Important**: Claude Code v2.0.73+ auto-loads `hooks/hooks.json`. Do NOT point `plugin.json` `hooks` to `./hooks/hooks.json`; use it only for additional hook files (e.g. `./hooks/extra-hooks.json`) or inline config.
 
 ### Official References
 
@@ -431,47 +432,48 @@ See `hooks/README.md` for comprehensive documentation including:
 
 ### Common Pitfalls and Lessons Learned
 
-**Issue: Hooks not loading (environment variables not set)**
+**Issue: Duplicate hooks loading error**
 
 **Symptoms:**
-- `COUNCIL_PLUGIN_ROOT`, `CLAUDE_PLUGIN_ROOT`, `CLAUDE_PROJECT_DIR` all show `[not set]`
-- SessionStart hook doesn't run
-- `/council` command fails with "Cannot locate council_utils.sh"
+- Error: "Duplicate hooks file detected: ./hooks/hooks.json resolves to already-loaded file"
+- Plugin fails to load with hook registration error
 
 **Root Cause:**
-The `hooks` field was removed from `plugin.json`, incorrectly assuming hooks are auto-discovered like commands/agents/skills.
+The `hooks` field in `plugin.json` points to `./hooks/hooks.json`, but Claude Code v2.0.73+ already auto-loads that file. The manifest `hooks` entry is treated as additional config, so the standard file is loaded twice.
 
-**Key Fact:** Hooks are **NOT auto-discovered**. Unlike commands, agents, and skills which have auto-discovery from conventional directories, hooks **MUST be explicitly registered** in `plugin.json`:
-
-```json
-{
-  "hooks": "./hooks/hooks.json"
-}
-```
+**Key Fact:** `hooks/hooks.json` is auto-loaded from the standard path; `plugin.json` `hooks` should only reference additional hook files (or inline config).
 
 **Auto-Discovery Behavior by Component:**
 
 | Component | Auto-Discovery | Explicit Registration |
 |-----------|---------------|----------------------|
-| Commands (`./commands/`) | ✅ Yes | Optional but recommended |
-| Agents (`./agents/`) | ✅ Yes | Optional but recommended |
-| Skills (`./skills/`) | ✅ Yes | Optional but recommended |
-| **Hooks** (`./hooks/hooks.json`) | ❌ **NO** | **REQUIRED** |
+| Commands (`./commands/`) | ✅ Yes | Optional |
+| Agents (`./agents/`) | ✅ Yes | Optional |
+| Skills (`./skills/`) | ✅ Yes | Optional |
+| **Hooks** (`./hooks/hooks.json`) | ✅ Yes | `hooks` only for extra files (not `./hooks/hooks.json`) |
 
 **Solution:**
-Always include the `hooks` field in `plugin.json`:
+If you only use the standard hooks file, remove the `hooks` field from `plugin.json`:
+```json
+{
+  "commands": ["./commands/council.md", ...],
+  "agents": ["./agents/council-chairman.md"],
+  "skills": ["./skills/council-orchestrator/"]
+}
+```
+
+If you need extra hooks, keep `hooks/hooks.json` and point `hooks` to a separate file:
 ```json
 {
   "commands": ["./commands/council.md", ...],
   "agents": ["./agents/council-chairman.md"],
   "skills": ["./skills/council-orchestrator/"],
-  "hooks": "./hooks/hooks.json"
+  "hooks": "./hooks/extra-hooks.json"
 }
 ```
 
 **Prevention:**
-- Never remove the `hooks` field from `plugin.json`
-- While commands/agents/skills support auto-discovery, explicit registration is recommended for production plugins
+- Do NOT point `hooks` to `./hooks/hooks.json`; use a separate file or inline config for additional hooks
 - After any manifest change, restart Claude Code session to reload plugin configuration
 
 ---
