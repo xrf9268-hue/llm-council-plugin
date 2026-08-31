@@ -1,3 +1,5 @@
+
+
 # LLM Council Plugin for Claude Code
 
 ![LLM Council Header](header.png)
@@ -113,6 +115,7 @@ If you see errors like **"BLOCKED: Detected potentially dangerous pattern: &&"**
 # Or manually update cache
 rm -rf ~/.claude/plugins/cache/llm-council-plugin
 # Then reinstall the plugin
+claude plugin install llm-council-plugin@llm-council
 ```
 
 See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for comprehensive troubleshooting guidance.
